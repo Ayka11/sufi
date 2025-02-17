@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Recognition</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #transcription {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+            word-wrap: break-word;
+        }
+        select {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Speech Recognition Control</h1>
+    
+    <!-- Language Dropdown -->
+    <select id="languageSelect">
+        <option value="en-US">English</option>
+        <option value="fr-FR">French</option>
+        <option value="az-AZ">Azerbaijani</option>
+        <option value="es-ES">Spanish</option>
+        <option value="de-DE">German</option>
+    </select>
+
+    <button id="startBtn">Start Transcription</button>
+    <button id="stopBtn">Stop Transcription</button>
+    <button id="downloadBtn">Download Transcription Log</button>
+
+    <div id="transcription">
+        <h2>Live Transcription:</h2>
+        <p id="transcriptionText">Waiting for speech...</p>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        // Connect to the WebSocket server
+        const socket = io.connect("http://127.0.0.1:5000");
+
+        // Debug log for WebSocket connection
+        socket.on('connect', () => {
+            console.log("WebSocket connected");
+        });
+
+        socket.on('disconnect', () => {
+            console.log("WebSocket disconnected");
+        });
+
+        // Listen for transcription updates from the server
+        socket.on('transcription', (data) => {
+            console.log("Received transcription:", data.transcription); // Debug log
+            const transcriptionText = document.getElementById('transcriptionText');
+            transcriptionText.textContent = data.transcription; // Update the transcription text dynamically
+
+            // Simulate page refresh by updating the section of the page
+            refreshTranscriptionDisplay();
+        });
+
+        // Function to refresh the transcription section
+        function refreshTranscriptionDisplay() {
+            const transcriptionText = document.getElementById('transcriptionText');
+            transcriptionText.style.transition = "opacity 0.5s";  // Add smooth transition effect
+            transcriptionText.style.opacity = 0; // Fade out
+            setTimeout(() => {
+                transcriptionText.style.opacity = 1; // Fade in after a short delay
+            }, 10); // Set timeout to match the fade out duration
+        }
+
+        // Handle button clicks to start and stop transcription
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // Start transcription
+        startBtn.onclick = async function() {
+            const selectedLanguage = document.getElementById('languageSelect').value; // Get selected language
+            console.log("Selected language:", selectedLanguage); // Debug log
+            const response = await fetch('/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ language: selectedLanguage })
+            });
+            const data = await response.json();
+            alert(data.message); // Display message on start
+        };
+
+        // Stop transcription
+        stopBtn.onclick = async function() {
+            const response = await fetch('/stop', { method: 'POST' });
+            const data = await response.json();
+            alert(data.message); // Display message on stop
+        };
+
+        // Download transcription log
+        downloadBtn.onclick = function() {
+            window.location.href = '/download_log'; // Trigger file download
+        };
+    </script>
+</body>
+</html>
