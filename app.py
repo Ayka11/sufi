@@ -133,7 +133,7 @@ def stop_transcription():
 def download_log():
     try:
         # Ensure the log file path is correct
-        return send_from_directory(directory=os.getcwd(), path=log_file_path, as_attachment=True)
+        return send_from_directory(directory='/home/site/wwwroot/', path=log_file_path, as_attachment=True)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -150,7 +150,7 @@ def handle_disconnect():
 
 if __name__ == "__main__":
     # Ensure the log file exists
-    if not os.path.exists(log_file_path):
+    if not os.path.exists('/home/site/wwwroot/'+log_file_path):
         with open(log_file_path, "w", encoding="utf-8") as log_file:
             log_file.write("Transcription Log:\n")
 
