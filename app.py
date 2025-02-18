@@ -87,7 +87,7 @@ def transcribe_audio(language):
 @app.route('/')
 def home():
     os.remove(log_file_path)
-    return send_from_directory(os.getcwd(), 'index.html')
+    return send_from_directory(os.getcwd(), 'index8.html')
 
 @app.route('/start', methods=['POST'])
 def start_transcription():
@@ -105,6 +105,9 @@ def start_transcription():
     thread.daemon = True
     thread.start()
 
+    # Emit a notification event to the frontend
+    socketio.emit('transcription_status', {'status': 'Transcription started'})
+
     return jsonify({"message": "Speech recognition started."}), 200
 
 @app.route('/stop', methods=['POST'])
@@ -120,6 +123,9 @@ def stop_transcription():
     # Stop the Azure Speech Recognizer if it exists
     if speech_recognizer:
         speech_recognizer.stop_continuous_recognition()
+
+    # Emit a notification event to the frontend
+    socketio.emit('transcription_status', {'status': 'Transcription stopped'})
 
     return jsonify({"message": "Speech recognition stopped."}), 200
 
