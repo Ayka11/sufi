@@ -3,118 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Speech Recognition</title>
+    <title>Real-Time Transcription</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
-            text-align: center;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 10px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        #transcription {
-            margin-top: 20px;
-            font-size: 18px;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
             color: #333;
+        }
+
+        h1 {
+            color: #4CAF50;
+        }
+
+        #transcription {
+            font-size: 18px;
+            color: #555;
+            margin-top: 20px;
+            width: 80%;
+            text-align: center;
             word-wrap: break-word;
         }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            border-radius: 50px;
+            margin: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:active {
+            transform: scale(0.98); /* Button shrink effect on click */
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button .icon {
+            margin-right: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .highlighted {
+            background-color: #ff9800; /* Highlight color */
+        }
+
+        .notification {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #007BFF;
+        }
+
         select {
             padding: 10px;
-            margin: 10px;
             font-size: 16px;
+            border-radius: 5px;
+            margin-top: 15px;
         }
+
     </style>
 </head>
 <body>
-    <h1>Speech Recognition Control</h1>
-    
-    <!-- Language Dropdown -->
+    <h1>Real-Time Transcription</h1>
+    <div id="transcription"></div>
+
+    <!-- Language Selection Dropdown -->
     <select id="languageSelect">
         <option value="en-US">English</option>
-        <option value="fr-FR">French</option>
         <option value="az-AZ">Azerbaijani</option>
+        <option value="fr-FR">French</option>
         <option value="es-ES">Spanish</option>
-        <option value="de-DE">German</option>
     </select>
 
-    <button id="startBtn">Start Transcription</button>
-    <button id="stopBtn">Stop Transcription</button>
-    <button id="downloadBtn">Download Transcription Log</button>
-
-    <div id="transcription">
-        <h2>Live Transcription:</h2>
-        <p id="transcriptionText">Waiting for speech...</p>
+    <div class="action-buttons">
+        <button id="startButton" onclick="startTranscription()">
+            <span class="icon"><i class="fas fa-microphone"></i></span>Start Recording
+        </button>
+        <button id="stopButton" onclick="stopTranscription()" disabled>
+            <span class="icon"><i class="fas fa-stop"></i></span>Stop Transcription
+        </button>
     </div>
+    
+    <a href="/download_log" download>
+        <button>Download Log File</button>
+    </a>
+    
+    <div id="notification" class="notification"></div>
 
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script>
-        // Connect to the WebSocket server
-        const socket = io.connect("http://127.0.0.1:5000");
-
-        // Debug log for WebSocket connection
-        socket.on('connect', () => {
-            console.log("WebSocket connected");
-        });
-
-        socket.on('disconnect', () => {
-            console.log("WebSocket disconnected");
-        });
-
-        // Listen for transcription updates from the server
-        socket.on('transcription', (data) => {
-            console.log("Received transcription:", data.transcription); // Debug log
-            const transcriptionText = document.getElementById('transcriptionText');
-            transcriptionText.textContent = data.transcription; // Update the transcription text dynamically
-
-            // Simulate page refresh by updating the section of the page
-            refreshTranscriptionDisplay();
-        });
-
-        // Function to refresh the transcription section
-        function refreshTranscriptionDisplay() {
-            const transcriptionText = document.getElementById('transcriptionText');
-            transcriptionText.style.transition = "opacity 0.5s";  // Add smooth transition effect
-            transcriptionText.style.opacity = 0; // Fade out
-            setTimeout(() => {
-                transcriptionText.style.opacity = 1; // Fade in after a short delay
-            }, 10); // Set timeout to match the fade out duration
-        }
-
-        // Handle button clicks to start and stop transcription
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-
         // Start transcription
-        startBtn.onclick = async function() {
-            const selectedLanguage = document.getElementById('languageSelect').value; // Get selected language
-            console.log("Selected language:", selectedLanguage); // Debug log
-            const response = await fetch('/start', {
+        function startTranscription() {
+            // Get selected language
+            const selectedLanguage = document.getElementById('languageSelect').value;
+            // Disable start button and change its text
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const notificationElement = document.getElementById('notification');
+            
+            startButton.disabled = true;
+            startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone-slash"></i></span>Transcribing...';
+            
+            // Enable stop button and highlight it
+            stopButton.disabled = false;
+            stopButton.classList.add('highlighted');
+            startButton.classList.remove('highlighted');
+            
+            // Send start transcription request to the server with selected language
+            fetch('/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ language: selectedLanguage })
+            }).then(response => {
+                if (response.ok) {
+                    notificationElement.innerText = 'Transcription started.';
+                } else {
+                    notificationElement.innerText = 'Failed to start transcription.';
+                }
+            }).catch(err => {
+                notificationElement.innerText = 'Error starting transcription.';
+                console.error(err);
             });
-            const data = await response.json();
-            alert(data.message); // Display message on start
-        };
+        }
 
         // Stop transcription
-        stopBtn.onclick = async function() {
-            const response = await fetch('/stop', { method: 'POST' });
-            const data = await response.json();
-            alert(data.message); // Display message on stop
-        };
-
-        // Download transcription log
-        downloadBtn.onclick = function() {
-            window.location.href = '/download_log'; // Trigger file download
-        };
+        function stopTranscription() {
+            // Disable stop button and change its text
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const notificationElement = document.getElementById('notification');
+            
+            stopButton.disabled = true;
+            stopButton.classList.remove('highlighted');
+            
+            // Enable start button and highlight it
+            startButton.disabled = false;
+            startButton.classList.add('highlighted');
+            startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone"></i></span>Start Recording';
+            
+            // Send stop transcription request to the server
+            fetch('/stop', {
+                method: 'POST'
+            }).then(response => {
+                if (response.ok) {
+                    notificationElement.innerText = 'Transcription stopped.';
+                } else {
+                    notificationElement.innerText = 'Failed to stop transcription.';
+                }
+            }).catch(err => {
+                notificationElement.innerText = 'Error stopping transcription.';
+                console.error(err);
+            });
+        }
     </script>
 </body>
 </html>
