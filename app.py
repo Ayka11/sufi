@@ -22,6 +22,9 @@ language = "en-US"  # Default language
 # Global variable to control the transcription thread
 transcription_active = False
 speech_recognizer = None
+UPLOAD_FOLDER = 'downloads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 
 # Log file path ff
 log_file_path = "transcription_log_" + str(time.time())[:10] + ".txt"
@@ -52,7 +55,7 @@ def transcribe_audio(language):
         log_entry = f"[{timestamp}] {transcription_text}\n"
 
         # Save the transcription to the log file
-        with open(log_file_path, "a", encoding="utf-8") as log_file:
+        with open(os.path.join('downloads',log_file_path), "a", encoding="utf-8") as log_file:
             log_file.write(log_entry)
 
         # Emit the transcription to the front-end via WebSocket in real-time
@@ -129,11 +132,15 @@ def stop_transcription():
 
     return jsonify({"message": "Speech recognition stopped."}), 200
 
-@app.route('/download_log', methods=['GET'])
-def download_log():
+
+from flask import send_from_directory
+import os
+
+@app.route('/downloads', methods=['GET'])
+def downloads():
     try:
         # Ensure the log file path is correct
-        return send_file(directory='/home/site/wwwroot/'+ log_file_path, as_attachment=True,mimetype='application/octet-stream')
+        return send_from_directory(app.config['UPLOAD_FOLDER'], log_file_path)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -150,8 +157,8 @@ def handle_disconnect():
 
 if __name__ == "__main__":
     # Ensure the log file exists
-    if not os.path.exists('/home/site/wwwroot/'+log_file_path):
-        with open(log_file_path, "w", encoding="utf-8") as log_file:
+    if not os.path.exists(os.path.join('downloads',log_file_path)):
+        with open(os.path.join('downloads',log_file_path), "w", encoding="utf-8") as log_file:
             log_file.write("Transcription Log:\n")
 
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=5000)
