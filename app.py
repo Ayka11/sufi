@@ -87,7 +87,7 @@ def transcribe_audio(language):
 @app.route('/')
 def home():
     os.remove(log_file_path)
-    return send_from_directory(os.getcwd(), 'index8.html')
+    return send_from_directory(os.getcwd(), 'index.html')
 
 @app.route('/start', methods=['POST'])
 def start_transcription():
