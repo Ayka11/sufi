@@ -24,7 +24,7 @@ transcription_active = False
 speech_recognizer = None
 
 # Log file path
-log_file_path = "transcription_log.txt"
+log_file_path = "transcription_log_" + str(time.time()[:10]) + ".txt"
 
 def transcribe_audio(language):
     global transcription_text, transcription_active, speech_recognizer
@@ -86,7 +86,7 @@ def transcribe_audio(language):
 
 @app.route('/')
 def home():
-    os.remove(log_file_path)
+    #os.remove(log_file_path)
     return send_from_directory(os.getcwd(), 'index.html')
 
 @app.route('/start', methods=['POST'])
@@ -133,7 +133,7 @@ def stop_transcription():
 def download_log():
     try:
         # Ensure the log file path is correct
-        return send_from_directory(directory=os.getcwd(), path='transcription_log.txt', as_attachment=True)
+        return send_from_directory(directory=os.getcwd(), path=log_file_path, as_attachment=True)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
