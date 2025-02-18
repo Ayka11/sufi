@@ -24,7 +24,7 @@ transcription_active = False
 speech_recognizer = None
 
 # Log file path
-log_file_path = "transcription_log_" + str(time.time()[:10]) + ".txt"
+log_file_path = "transcription_log_" + str(time.time())[:10] + ".txt"
 
 def transcribe_audio(language):
     global transcription_text, transcription_active, speech_recognizer
