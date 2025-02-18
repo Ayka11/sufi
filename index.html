@@ -1,187 +1,157 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Transcription</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: #333;
-        }
+from flask import Flask, jsonify, request, send_from_directory
+from flask_socketio import SocketIO, emit
+import threading
+import azure.cognitiveservices.speech as speechsdk
+import time
+import os
+from datetime import datetime
 
-        h1 {
-            color: #4CAF50;
-        }
+app = Flask(__name__)
 
-        #transcription {
-            font-size: 18px;
-            color: #555;
-            margin-top: 20px;
-            width: 80%;
-            text-align: center;
-            word-wrap: break-word;
-        }
+# Flask-SocketIO initialization
+socketio = SocketIO(app, async_mode='eventlet')
 
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 12px 24px;
-            font-size: 18px;
-            border: none;
-            cursor: pointer;
-            border-radius: 50px;
-            margin: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s ease, transform 0.1s ease;
-        }
+# Replace with your Azure Speech API subscription key and region
+subscription_key = "0457e552ce7a4ca290ca45c2d4910990"
+region = "southeastasia"
 
-        button:hover {
-            background-color: #45a049;
-        }
+# Store the current transcription text globally
+transcription_text = ""
+language = "en-US"  # Default language
 
-        button:active {
-            transform: scale(0.98); /* Button shrink effect on click */
-        }
+# Global variable to control the transcription thread
+transcription_active = False
+speech_recognizer = None
 
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
+# Log file path
+log_file_path = "transcription_log.txt"
 
-        button .icon {
-            margin-right: 10px;
-        }
+def transcribe_audio(language):
+    global transcription_text, transcription_active, speech_recognizer
 
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+    # Create a speech configuration object with your subscription key and region
+    speech_config = speechsdk.SpeechConfig(subscription=subscription_key, region=region)
 
-        .highlighted {
-            background-color: #ff9800; /* Highlight color */
-        }
+    # Set the language dynamically from the input
+    speech_config.speech_recognition_language = language
 
-        .notification {
-            margin-top: 10px;
-            font-size: 16px;
-            color: #007BFF;
-        }
+    # Create an audio configuration object for real-time transcription using the microphone
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 
-        select {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
+    # Create a speech recognizer using the audio and speech configuration
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
 
-    </style>
-</head>
-<body>
-    <h1>Real-Time Transcription</h1>
-    <div id="transcription"></div>
+    # Event handler to capture and display transcription results in real-time
+    def recognized_handler(evt):
+        global transcription_text
+        transcription_text = evt.result.text
+        print(f"Recognized: {transcription_text}")  # Debug log
 
-    <!-- Language Selection Dropdown -->
-    <select id="languageSelect">
-        <option value="en-US">English</option>
-        <option value="az-AZ">Azerbaijani</option>
-        <option value="fr-FR">French</option>
-        <option value="es-ES">Spanish</option>
-    </select>
+        # Add timestamp to the transcription
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] {transcription_text}\n"
 
-    <div class="action-buttons">
-        <button id="startButton" onclick="startTranscription()">
-            <span class="icon"><i class="fas fa-microphone"></i></span>Start Recording
-        </button>
-        <button id="stopButton" onclick="stopTranscription()" disabled>
-            <span class="icon"><i class="fas fa-stop"></i></span>Stop Transcription
-        </button>
-    </div>
-    
-    <a href="/download_log" download>
-        <button>Download Log File</button>
-    </a>
-    
-    <div id="notification" class="notification"></div>
+        # Save the transcription to the log file
+        with open(log_file_path, "a", encoding="utf-8") as log_file:
+            log_file.write(log_entry)
 
-    <script>
-        // Start transcription
-        function startTranscription() {
-            // Get selected language
-            const selectedLanguage = document.getElementById('languageSelect').value;
-            // Disable start button and change its text
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            const notificationElement = document.getElementById('notification');
-            
-            startButton.disabled = true;
-            startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone-slash"></i></span>Transcribing...';
-            
-            // Enable stop button and highlight it
-            stopButton.disabled = false;
-            stopButton.classList.add('highlighted');
-            startButton.classList.remove('highlighted');
-            
-            // Send start transcription request to the server with selected language
-            fetch('/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ language: selectedLanguage })
-            }).then(response => {
-                if (response.ok) {
-                    notificationElement.innerText = 'Transcription started.';
-                } else {
-                    notificationElement.innerText = 'Failed to start transcription.';
-                }
-            }).catch(err => {
-                notificationElement.innerText = 'Error starting transcription.';
-                console.error(err);
-            });
-        }
+        # Emit the transcription to the front-end via WebSocket in real-time
+        socketio.emit('transcription', {'transcription': transcription_text})
+        print("Transcription sent to WebSocket")  # Debug log
 
-        // Stop transcription
-        function stopTranscription() {
-            // Disable stop button and change its text
-            const startButton = document.getElementById('startButton');
-            const stopButton = document.getElementById('stopButton');
-            const notificationElement = document.getElementById('notification');
-            
-            stopButton.disabled = true;
-            stopButton.classList.remove('highlighted');
-            
-            // Enable start button and highlight it
-            startButton.disabled = false;
-            startButton.classList.add('highlighted');
-            startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone"></i></span>Start Recording';
-            
-            // Send stop transcription request to the server
-            fetch('/stop', {
-                method: 'POST'
-            }).then(response => {
-                if (response.ok) {
-                    notificationElement.innerText = 'Transcription stopped.';
-                } else {
-                    notificationElement.innerText = 'Failed to stop transcription.';
-                }
-            }).catch(err => {
-                notificationElement.innerText = 'Error stopping transcription.';
-                console.error(err);
-            });
-        }
-    </script>
-</body>
-</html>
+    # Event handler for speech recognition started
+    def start_handler(evt):
+        print("Speech recognition started...")
+
+    # Event handler for speech recognition completed
+    def stop_handler(evt):
+        print("Speech recognition stopped.")
+
+    # Connect event handlers to recognized event
+    speech_recognizer.recognized.connect(recognized_handler)
+    speech_recognizer.session_started.connect(start_handler)
+    speech_recognizer.session_stopped.connect(stop_handler)
+
+    # Start continuous recognition
+    print("Starting speech recognition...")
+    speech_recognizer.start_continuous_recognition()
+
+    # Keep the transcription active
+    while transcription_active:
+        time.sleep(1)
+
+    # Stop continuous recognition when transcription_active is False
+    speech_recognizer.stop_continuous_recognition()
+    print("Transcription stopped.")
+
+@app.route('/')
+def home():
+    #os.remove(log_file_path)
+    return send_from_directory(os.getcwd(), 'index8.html')
+
+@app.route('/start', methods=['POST'])
+def start_transcription():
+    global language, transcription_active
+
+    if transcription_active:
+        return jsonify({"message": "Transcription is already running."}), 400
+
+    data = request.get_json()
+    language = data.get('language', 'en-US')  # Default to English if no language is provided
+
+    # Start the transcription in a background thread with the selected language
+    transcription_active = True
+    thread = threading.Thread(target=transcribe_audio, args=(language,))
+    thread.daemon = True
+    thread.start()
+
+    # Emit a notification event to the frontend
+    socketio.emit('transcription_status', {'status': 'Transcription started'})
+
+    return jsonify({"message": "Speech recognition started."}), 200
+
+@app.route('/stop', methods=['POST'])
+def stop_transcription():
+    global transcription_active, speech_recognizer
+
+    if not transcription_active:
+        return jsonify({"message": "No active transcription to stop."}), 400
+
+    # Stop the transcription
+    transcription_active = False
+
+    # Stop the Azure Speech Recognizer if it exists
+    if speech_recognizer:
+        speech_recognizer.stop_continuous_recognition()
+
+    # Emit a notification event to the frontend
+    socketio.emit('transcription_status', {'status': 'Transcription stopped'})
+
+    return jsonify({"message": "Speech recognition stopped."}), 200
+
+@app.route('/download_log', methods=['GET'])
+def download_log():
+    try:
+        # Ensure the log file path is correct
+        return send_from_directory(directory=os.getcwd(), path='transcription_log.txt', as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected")
+    # Send initial transcription state if available
+    emit('transcription', {'transcription': transcription_text})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Client disconnected")
+
+if __name__ == "__main__":
+    # Ensure the log file exists
+    if not os.path.exists(log_file_path):
+        with open(log_file_path, "w", encoding="utf-8") as log_file:
+            log_file.write("Transcription Log:\n")
+
+    socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=5000)
