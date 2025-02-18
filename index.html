@@ -86,7 +86,6 @@
             border-radius: 5px;
             margin-top: 15px;
         }
-
     </style>
 </head>
 <body>
@@ -110,18 +109,31 @@
         </button>
     </div>
     
-    <a href="/download_log" download>
+    <a href="/downloads">
         <button>Download Log File</button>
     </a>
     
     <div id="notification" class="notification"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <script>
+        // Connect to the SocketIO server
+        const socket = io.connect();
+
+        // Listen for the 'transcription' event and update the transcription
+        socket.on('transcription', function(data) {
+            const transcriptionElement = document.getElementById('transcription');
+            transcriptionElement.innerText = data.transcription;
+        });
+
+        socket.on('transcription_status', function(data) {
+            const notificationElement = document.getElementById('notification');
+            notificationElement.innerText = data.status;
+        });
+
         // Start transcription
         function startTranscription() {
-            // Get selected language
             const selectedLanguage = document.getElementById('languageSelect').value;
-            // Disable start button and change its text
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
             const notificationElement = document.getElementById('notification');
@@ -129,12 +141,10 @@
             startButton.disabled = true;
             startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone-slash"></i></span>Transcribing...';
             
-            // Enable stop button and highlight it
             stopButton.disabled = false;
             stopButton.classList.add('highlighted');
             startButton.classList.remove('highlighted');
             
-            // Send start transcription request to the server with selected language
             fetch('/start', {
                 method: 'POST',
                 headers: {
@@ -155,7 +165,6 @@
 
         // Stop transcription
         function stopTranscription() {
-            // Disable stop button and change its text
             const startButton = document.getElementById('startButton');
             const stopButton = document.getElementById('stopButton');
             const notificationElement = document.getElementById('notification');
@@ -163,12 +172,10 @@
             stopButton.disabled = true;
             stopButton.classList.remove('highlighted');
             
-            // Enable start button and highlight it
             startButton.disabled = false;
             startButton.classList.add('highlighted');
             startButton.innerHTML = '<span class="icon"><i class="fas fa-microphone"></i></span>Start Recording';
             
-            // Send stop transcription request to the server
             fetch('/stop', {
                 method: 'POST'
             }).then(response => {
