@@ -23,7 +23,7 @@ language = "en-US"  # Default language
 transcription_active = False
 speech_recognizer = None
 
-# Log file path
+# Log file path ff
 log_file_path = "transcription_log_" + str(time.time())[:10] + ".txt"
 
 def transcribe_audio(language):
