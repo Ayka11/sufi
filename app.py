@@ -134,7 +134,7 @@ def download_log():
     try:
         # Ensure the log file path is correct
         return send_file(directory='/home/site/wwwroot/'+ log_file_path, as_attachment=True,mimetype='application/octet-stream')
-    except Exception as e:,
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
