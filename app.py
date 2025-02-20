@@ -110,6 +110,10 @@ def transcribe_google(language):
         process_audio_chunk(audio_data)
         time.sleep(1)
 
+@app.route('/')
+def home():
+    return 'working fine'
+    
 @app.route('/start', methods=['POST'])
 def start_transcription():
     global language, transcription_active
