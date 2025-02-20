@@ -2,4 +2,5 @@ Flask
 Flask-SocketIO
 azure-cognitiveservices-speech
 eventlet
+flask-cors
 requests
