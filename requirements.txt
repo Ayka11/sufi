@@ -2,3 +2,4 @@ Flask
 Flask-SocketIO
 azure-cognitiveservices-speech
 eventlet
+requests
