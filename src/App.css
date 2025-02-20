@@ -1,38 +1,123 @@
-.App {
+/* Global Styles */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f6f9;
+  color: #333;
+  padding: 20px;
+  margin: 0;
+}
+
+/* Header */
+h1 {
+  font-size: 2.5rem;
+  color: #444;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Transcription Box */
+.transcription-box {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  height: 150px;
+  overflow-y: auto;
+}
+
+.transcription-text {
+  font-size: 1.2rem;
+  white-space: pre-wrap; /* Ensures new lines from server are respected */
+  word-wrap: break-word;
+}
+
+/* Controls */
+.controls {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+select {
+  padding: 10px;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: #fff;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+/* Buttons */
+button {
+  padding: 12px 20px;
+  font-size: 1rem;
+  margin: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Start Button */
+.start-button {
+  background-color: #4caf50;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.start-button:hover {
+  background-color: #45a049;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Stop Button */
+.stop-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.stop-button:hover {
+  background-color: #e53935;
+}
+
+/* Download Button */
+.download-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.download-button:hover {
+  background-color: #1976d2;
+}
+
+/* Icons */
+button svg {
+  margin-right: 8px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .transcription-box {
+    height: 120px;
   }
-  to {
-    transform: rotate(360deg);
+
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  select {
+    width: 100%;
+  }
+
+  button {
+    width: 100%;
+    margin: 5px 0;
   }
 }
