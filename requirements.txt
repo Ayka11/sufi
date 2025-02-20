@@ -1,6 +1,6 @@
 Flask
+flask-cors
 Flask-SocketIO
 azure-cognitiveservices-speech
 eventlet
-flask-cors
 requests
