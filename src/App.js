@@ -1,3 +1,4 @@
+// Updated App.js
 import React, { useState, useEffect } from "react";
 import { FaMicrophone, FaStop, FaDownload } from "react-icons/fa";
 
@@ -6,32 +7,39 @@ const App = () => {
   const [audioChunks, setAudioChunks] = useState([]);
   const [transcriptions, setTranscriptions] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [service, setService] = useState("azure"); // Default to Azure
-  const [language, setLanguage] = useState("en-US"); // Default to English
+  const [service, setService] = useState("azure");
+  const [language, setLanguage] = useState("en-US");
 
   useEffect(() => {
-    // Initialize media recorder
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      const recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = (event) => {
-        setAudioChunks((prev) => [...prev, event.data]);
-      };
-      setMediaRecorder(recorder);
-    });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("getUserMedia is not supported in this environment.");
+      return;
+    }
 
-    // Load previous transcriptions from local storage
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        const recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = (event) => {
+          setAudioChunks((prev) => [...prev, event.data]);
+        };
+        setMediaRecorder(recorder);
+      })
+      .catch((err) => {
+        console.error("Error accessing microphone:", err);
+      });
+
     const savedTranscriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
     setTranscriptions(savedTranscriptions);
   }, []);
 
   const startRecording = () => {
     setAudioChunks([]);
-    mediaRecorder.start();
+    mediaRecorder?.start();
     setIsRecording(true);
   };
 
   const stopRecording = () => {
-    mediaRecorder.stop();
+    mediaRecorder?.stop();
     setIsRecording(false);
 
     mediaRecorder.onstop = () => {
@@ -57,7 +65,6 @@ const App = () => {
           text: data.transcription || "No transcription available",
         };
 
-        // Update state and store in local storage
         const updatedTranscriptions = [...transcriptions, newEntry];
         setTranscriptions(updatedTranscriptions);
         localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
@@ -65,30 +72,9 @@ const App = () => {
       .catch((err) => console.error("Error:", err));
   };
 
-  const downloadTranscription = () => {
-    if (transcriptions.length === 0) {
-      alert("No transcription available to download.");
-      return;
-    }
-
-    let textContent = "Transcription Log:\n\n";
-    transcriptions.forEach((entry) => {
-      textContent += `[${entry.timestamp}] ${entry.text}\n`;
-    });
-
-    const blob = new Blob([textContent], { type: "text/plain" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "transcription_log.txt";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="App">
       <h1>Real-Time Transcription</h1>
-
       <div className="controls">
         <label>Language:</label>
         <select onChange={(e) => setLanguage(e.target.value)} value={language}>
@@ -110,22 +96,9 @@ const App = () => {
         <button className="stop-button" onClick={stopRecording} disabled={!isRecording}>
           <FaStop /> Stop Recording
         </button>
-        <button className="download-button" onClick={downloadTranscription}>
+        <button className="download-button" onClick={() => {}}>
           <FaDownload /> Download Log
         </button>
-      </div>
-
-      <div className="transcription-box">
-        <h3>Transcription:</h3>
-        {transcriptions.length === 0 ? (
-          <p>No transcriptions yet.</p>
-        ) : (
-          transcriptions.map((entry, index) => (
-            <p key={index}>
-              <strong>[{entry.timestamp}]</strong> {entry.text}
-            </p>
-          ))
-        )}
       </div>
     </div>
   );
