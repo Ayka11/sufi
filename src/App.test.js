@@ -1,26 +1,17 @@
+// App.test.js
 import { render, screen } from "@testing-library/react";
 import App from "./App";
 
-// Ensure `mediaDevices` exists and is mocked properly
 beforeAll(() => {
-  Object.defineProperty(global.navigator, "mediaDevices", {
-    writable: true,
-    value: {
-      getUserMedia: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          getTracks: () => [
-            {
-              stop: jest.fn(),
-            },
-          ],
-        })
-      ),
-    },
-  });
+  global.navigator.mediaDevices = {
+    getUserMedia: jest.fn().mockResolvedValue({
+      // Mock a fake MediaStream
+      getTracks: () => [],
+    }),
+  };
 });
 
-test("renders real-time transcription header", async () => {
+test("renders without crashing", () => {
   render(<App />);
-  const headerElement = await screen.findByText(/real-time transcription/i); // Match "Real-Time Transcription"
-  expect(headerElement).toBeInTheDocument();
+  expect(screen.getByText(/some text from App/i)).toBeInTheDocument();
 });
