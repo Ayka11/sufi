@@ -68,7 +68,7 @@ def upload_audio():
     with open(log_file_path, "a", encoding="utf-8") as log_file:
         log_file.write(log_entry)
 
-    # Emit transcription to frontend
+    # Emit transcription to frontend in real-time
     socketio.emit('transcription', {'transcription': transcription_text})
 
     return jsonify({"transcription": transcription_text})
@@ -113,6 +113,7 @@ def downloads():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# SocketIO Events
 @socketio.on('connect')
 def handle_connect():
     print("Client connected")
