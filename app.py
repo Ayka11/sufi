@@ -117,6 +117,11 @@ def home():
 @app.route('/start', methods=['POST'])
 def start_transcription():
     global language, transcription_active
+    if not os.path.exists(os.path.join('downloads', log_file_path)):
+        with open(os.path.join('downloads', log_file_path), "w", encoding="utf-8") as log_file:
+            log_file.write("Transcription Log:\n")
+
+    print('sucessfully created logfile)
 
     if transcription_active:
         return jsonify({"message": "Transcription is already running."}), 400
@@ -172,8 +177,4 @@ def handle_disconnect():
     print("Client disconnected")
 
 if __name__ == "__main__":
-    if not os.path.exists(os.path.join('downloads', log_file_path)):
-        with open(os.path.join('downloads', log_file_path), "w", encoding="utf-8") as log_file:
-            log_file.write("Transcription Log:\n")
-
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=5000)
