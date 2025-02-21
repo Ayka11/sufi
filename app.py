@@ -121,7 +121,7 @@ def start_transcription():
         with open(os.path.join('downloads', log_file_path), "w", encoding="utf-8") as log_file:
             log_file.write("Transcription Log:\n")
 
-    print('sucessfully created logfile)
+    print('sucessfully created logfile')
 
     if transcription_active:
         return jsonify({"message": "Transcription is already running."}), 400
