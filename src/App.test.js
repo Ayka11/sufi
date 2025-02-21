@@ -3,17 +3,18 @@ import App from "./App";
 
 // Mock getUserMedia to prevent Jest from failing
 beforeAll(() => {
-  global.navigator.mediaDevices = {
-    getUserMedia: jest.fn(() =>
-      Promise.resolve({
+  Object.defineProperty(global.navigator, "mediaDevices", {
+    writable: true,
+    value: {
+      getUserMedia: jest.fn().mockResolvedValue({
         getTracks: () => [
           {
             stop: jest.fn(),
           },
         ],
-      })
-    ),
-  };
+      }),
+    },
+  });
 });
 
 test("renders real-time transcription header", () => {
