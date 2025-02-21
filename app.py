@@ -12,7 +12,7 @@ import threading
 app = Flask(__name__)
 
 # Enable CORS for all origins (for React app to communicate with Flask)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
 
 # Flask-SocketIO initialization
 socketio = SocketIO(app, async_mode='eventlet')
@@ -177,4 +177,4 @@ def handle_disconnect():
     print("Client disconnected")
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
