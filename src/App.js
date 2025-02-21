@@ -4,7 +4,6 @@ import { FaMicrophone, FaStop, FaDownload } from 'react-icons/fa';
 
 const App = () => {
   const [transcription, setTranscription] = useState('');
-  const [status, setStatus] = useState('');
   const [language, setLanguage] = useState('en-US');
   const [service, setService] = useState('azure'); // Default to Azure
   const [isRecording, setIsRecording] = useState(false);
