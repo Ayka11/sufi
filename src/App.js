@@ -9,16 +9,12 @@ const App = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [service, setService] = useState("azure");
   const [language, setLanguage] = useState("en-US");
-  const [, setSocket] = useState(null);  // New state to hold socket connection
+  const [,, setSocket] = useState(null);  // New state to hold socket connection
   const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
 
   // Initialize socket connection on component mount
   useEffect(() => {
-<<<<<<< HEAD
     const newSocket = io("https://transkripsiya-backend.azurewebsites.net/", {
-=======
-    const newSocket = io("http://localhost:5000", {
->>>>>>> 1b15f4bab47a6594a0575391b09a402bce7a40c0
       transports: ["websocket"],  // Force WebSocket transport
     });
 
@@ -91,11 +87,7 @@ const App = () => {
     formData.append("service", service);
     formData.append("language", language);
 
-<<<<<<< HEAD
     fetch("https://transkripsiya-backend.azurewebsites.net/upload_audio", {
-=======
-    fetch("http://localhost:5000/upload_audio", {
->>>>>>> 1b15f4bab47a6594a0575391b09a402bce7a40c0
       method: "POST",
       body: formData,
     })
