@@ -58,29 +58,8 @@ const App = () => {
     setTranscriptions(savedTranscriptions);
   }, []); // No need to update the dependency array here
 
-  // Start recording audio
-  const startRecording = () => {
-    setAudioChunks([]);
-    mediaRecorder?.start();
-    setIsRecording(true);
-    console.log("Recording started...");
-  };
-
-  // Stop recording audio
-  const stopRecording = () => {
-    mediaRecorder?.stop();
-    setIsRecording(false);
-    console.log("Recording stopped...");
-
-    // When stop is triggered, send audio to backend
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
-      sendAudioToBackend(audioBlob);
-    };
-  };
-
-  // Send audio to backend for transcription
-  const sendAudioToBackend = (audioBlob) => {
+  // Memoize the sendAudioToBackend function using useCallback
+  const sendAudioToBackend = useCallback((audioBlob) => {
     console.log("Sending audio to backend:", audioBlob);
     const formData = new FormData();
     formData.append("audio", audioBlob, "audio.ogg"); // Send as OGG format
@@ -103,6 +82,27 @@ const App = () => {
         localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
       })
       .catch((err) => console.error("Error:", err));
+  }, [service, language, transcriptions]); // Add dependencies to avoid stale closures
+
+  // Start recording audio
+  const startRecording = () => {
+    setAudioChunks([]);
+    mediaRecorder?.start();
+    setIsRecording(true);
+    console.log("Recording started...");
+  };
+
+  // Stop recording audio
+  const stopRecording = () => {
+    mediaRecorder?.stop();
+    setIsRecording(false);
+    console.log("Recording stopped...");
+
+    // When stop is triggered, send audio to backend
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
+      sendAudioToBackend(audioBlob);
+    };
   };
 
   // Handle silence detection to automatically send audio to backend after a pause
