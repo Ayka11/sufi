@@ -51,27 +51,41 @@ def upload_audio():
     service = request.form.get("service", "azure")  # Default to Azure
     language = request.form.get("language", "en-US")
 
+    # Check if the audio file is not empty
+    if audio_file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
     file_path = os.path.join(UPLOAD_FOLDER, "uploaded_audio.wav")
     audio_file.save(file_path)
 
-    if service == "azure":
-        transcription_text = transcribe_with_azure(file_path, language)
-    elif service == "google":
-        transcription_text = transcribe_with_google(file_path, language)
-    else:
-        return jsonify({"error": "Invalid service selected"}), 400
+    # Check if the audio file is valid by ensuring it's not zero bytes
+    if os.path.getsize(file_path) == 0:
+        return jsonify({"error": "Empty audio file"}), 400
 
-    # Log transcription
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] {transcription_text}\n"
+    try:
+        if service == "azure":
+            transcription_text = transcribe_with_azure(file_path, language)
+        elif service == "google":
+            transcription_text = transcribe_with_google(file_path, language)
+        else:
+            return jsonify({"error": "Invalid service selected"}), 400
 
-    with open(log_file_path, "a", encoding="utf-8") as log_file:
-        log_file.write(log_entry)
+        # Log transcription
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] {transcription_text}\n"
 
-    # Emit transcription to frontend via SocketIO
-    socketio.emit('transcription', {'transcription': transcription_text})
+        with open(log_file_path, "a", encoding="utf-8") as log_file:
+            log_file.write(log_entry)
 
-    return jsonify({"transcription": transcription_text})
+        # Emit transcription to frontend via SocketIO
+        socketio.emit('transcription', {'transcription': transcription_text})
+
+        return jsonify({"transcription": transcription_text})
+
+    except Exception as e:
+        # Log any exception that occurs during the transcription process
+        return jsonify({"error": str(e)}), 500
+
 
 # 🔹 Azure Speech-to-Text
 def transcribe_with_azure(file_path, language):
@@ -80,8 +94,15 @@ def transcribe_with_azure(file_path, language):
     audio_input = speechsdk.audio.AudioConfig(filename=file_path)
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_input)
 
-    result = speech_recognizer.recognize_once()
-    return result.text if result.text else "No transcription result"
+    try:
+        result = speech_recognizer.recognize_once()
+        if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            return result.text
+        else:
+            raise Exception(f"Azure transcription failed: {result.reason}")
+    except Exception as e:
+        raise Exception(f"Error during Azure transcription: {str(e)}")
+
 
 # 🔹 Google Speech-to-Text
 def transcribe_with_google(file_path, language):
@@ -112,6 +133,7 @@ def downloads():
         return send_from_directory(app.config['UPLOAD_FOLDER'], "transcription_log.txt")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # WebSocket Events
 @socketio.on('connect')
