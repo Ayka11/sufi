@@ -3,5 +3,5 @@ requests
 Flask
 Flask-SocketIO
 Flask-Cors
-pydub
 eventlet
+pydub
