@@ -5,6 +5,9 @@ from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
+import tempfile
+import shutil
+from pydub import AudioSegment
 
 app = Flask(__name__)
 
@@ -18,7 +21,7 @@ socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
 AZURE_REGION = "southeastasia"
 
-# Google Speech API setup
+# Google Speech API setup (if needed)
 GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
 GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}"
 
@@ -55,22 +58,31 @@ def upload_audio():
     if audio_file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
-    file_path = os.path.join(UPLOAD_FOLDER, "uploaded_audio.wav")
+    file_path = os.path.join(UPLOAD_FOLDER, "uploaded_audio")
     audio_file.save(file_path)
 
     # Check if the audio file is valid by ensuring it's not zero bytes
     if os.path.getsize(file_path) == 0:
         return jsonify({"error": "Empty audio file"}), 400
 
+    # Ensure audio is in the correct format (WAV, 16-bit PCM, 16kHz)
     try:
-        # Check the format of the audio file before processing
-        if not is_valid_audio(file_path):
-            return jsonify({"error": "Invalid audio file format"}), 400
+        # Convert to WAV using pydub
+        wav_file_path = os.path.join(UPLOAD_FOLDER, "converted_audio.wav")
+        audio = AudioSegment.from_file(file_path)
+        audio = audio.set_channels(1)  # Mono channel
+        audio = audio.set_sample_width(2)  # 16-bit sample width
+        audio = audio.set_frame_rate(16000)  # 16kHz sampling rate
+        audio.export(wav_file_path, format="wav")
+    except Exception as e:
+        return jsonify({"error": f"Error during audio conversion: {str(e)}"}), 500
 
+    try:
+        # Process the audio
         if service == "azure":
-            transcription_text = transcribe_with_azure(file_path, language)
+            transcription_text = transcribe_with_azure(wav_file_path, language)
         elif service == "google":
-            transcription_text = transcribe_with_google(file_path, language)
+            transcription_text = transcribe_with_google(wav_file_path, language)
         else:
             return jsonify({"error": "Invalid service selected"}), 400
 
@@ -106,6 +118,11 @@ def transcribe_with_azure(file_path, language):
         result = speech_recognizer.recognize_once()
         if result.reason == speechsdk.ResultReason.RecognizedSpeech:
             return result.text
+        elif result.reason == speechsdk.ResultReason.NoMatch:
+            raise Exception(f"No speech could be recognized in the audio.")
+        elif result.reason == speechsdk.ResultReason.Canceled:
+            cancellation_details = result.cancellation_details
+            raise Exception(f"Azure transcription failed: {cancellation_details.reason}, {cancellation_details.error_details}")
         else:
             raise Exception(f"Azure transcription failed: {result.reason}")
     except Exception as e:
