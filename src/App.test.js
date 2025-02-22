@@ -2,27 +2,31 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 import { io } from 'socket.io-client'; // Import socket.io-client
 
-// Mock socket.io-client
+// Mock socket.io-client and useState
 jest.mock('socket.io-client');
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useState: (initialState) => [initialState, jest.fn()],
+}));
 
 describe('App', () => {
   let mockSocket;
 
   beforeEach(() => {
-    // Create a mock socket instance
+    // Mock socket instance
     mockSocket = {
       on: jest.fn(),
       emit: jest.fn(),
       disconnect: jest.fn(),
     };
 
-    // Mock the socket.io-client to return the mock socket instance
+    // Mock socket.io-client to return the mock socket instance
     io.mockReturnValue(mockSocket);
   });
 
   test('renders without crashing', () => {
     render(<App />);
-    
+
     // Check if the elements you expect to be present are rendered
     expect(screen.getByText(/Real-Time Transcription/i)).toBeInTheDocument();
     expect(screen.getByText(/Start Recording/i)).toBeInTheDocument();
