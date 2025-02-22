@@ -15,7 +15,7 @@ const App = () => {
   // Initialize socket connection on component mount
   useEffect(() => {
     const newSocket = io("https://transkripsiya-backend.azurewebsites.net/", {
-      transports: ["websocket"],  // Force WebSocket transport
+      transports: ["websocket"],  // Force WebSocket transport gg
     });
 
     setSocket(newSocket);
