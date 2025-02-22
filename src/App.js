@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FaMicrophone, FaStop, FaDownload } from "react-icons/fa";
 import { io } from "socket.io-client"; // Import socket.io-client
 
@@ -9,7 +9,7 @@ const App = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [service, setService] = useState("azure");
   const [language, setLanguage] = useState("en-US");
-  const [, setSocket] = useState(null);  // New state to hold socket connection
+  const [,, setSocket] = useState(null);  // New state to hold socket connection
   const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
 
   // Initialize socket connection on component mount
@@ -106,7 +106,7 @@ const App = () => {
   };
 
   // Handle silence detection to automatically send audio to backend after a pause
-  const detectSilence = () => {
+  const detectSilence = useCallback(() => {
     // Clear previous timeout if any
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -121,7 +121,7 @@ const App = () => {
       }
     }, 2000); // Adjust silence timeout as needed
     setTimeoutId(id);
-  };
+  }, [audioChunks, timeoutId]); // Add audioChunks and timeoutId as dependencies to ensure correctness
 
   // Monitor audio data availability and silence detection
   useEffect(() => {
