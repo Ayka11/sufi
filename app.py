@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Flask-SocketIO initialization with CORS settings
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Allow all origins for WebSocket
+socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")  # Use gevent for async WebSocket support
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
@@ -82,12 +82,16 @@ def upload_audio():
             log_file.write(log_entry)
 
         # Emit transcription to frontend via SocketIO
-        socketio.emit('transcription', {'transcription': transcription_text})
-
+        try:
+            socketio.emit('transcription', {'transcription': transcription_text})
+        except Exception as e:
+            app.logger.error(f"Socket emission error: {str(e)}")
+        
         return jsonify({"transcription": transcription_text})
 
     except Exception as e:
         # Log any exception that occurs during the transcription process
+        app.logger.error(f"Error during transcription: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -132,13 +136,11 @@ def transcribe_with_google(file_path, language):
 
 # 🔹 Audio File Validation (Ensures the file is valid)
 def is_valid_audio(file_path):
-    # Add your custom logic to validate the audio file format
     try:
         with open(file_path, "rb") as file:
-            # Check the first few bytes for standard WAV header
             header = file.read(4)
             if header != b'RIFF':
-                return False  # Invalid audio file, not a valid WAV file
+                return False
             return True
     except Exception as e:
         return False
@@ -156,13 +158,13 @@ def downloads():
 # WebSocket Events
 @socketio.on('connect')
 def handle_connect():
-    print("Client connected")
+    app.logger.info("Client connected")
     emit('transcription', {'transcription': "Connected!"})
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    print("Client disconnected")
+    app.logger.info("Client disconnected")
 
 if __name__ == "__main__":
-    # Run with eventlet to support WebSocket connections
+    # Run with gevent workers to handle async WebSocket connections properly
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
