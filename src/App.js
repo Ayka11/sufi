@@ -1,6 +1,6 @@
-// Updated App.js
 import React, { useState, useEffect } from "react";
 import { FaMicrophone, FaStop, FaDownload } from "react-icons/fa";
+import { io } from "socket.io-client"; // Import socket.io-client
 
 const App = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -9,7 +9,32 @@ const App = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [service, setService] = useState("azure");
   const [language, setLanguage] = useState("en-US");
+  const [socket, setSocket] = useState(null);  // New state to hold socket connection
+  const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
 
+  // Initialize socket connection on component mount
+  useEffect(() => {
+    const newSocket = io("http://localhost:5000", {
+      transports: ["websocket"],  // Force WebSocket transport
+    });
+
+    setSocket(newSocket);
+
+    // Listen for transcriptions from the backend
+    newSocket.on("transcription", (data) => {
+      console.log("Received transcription:", data.transcription);
+      setTranscriptions((prev) => [
+        ...prev,
+        { timestamp: new Date().toLocaleString(), text: data.transcription },
+      ]);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Handle microphone access and MediaRecorder setup
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("getUserMedia is not supported in this environment.");
@@ -20,6 +45,7 @@ const App = () => {
       .then((stream) => {
         const recorder = new MediaRecorder(stream);
         recorder.ondataavailable = (event) => {
+          console.log("Audio chunk available:", event.data);
           setAudioChunks((prev) => [...prev, event.data]);
         };
         setMediaRecorder(recorder);
@@ -32,29 +58,36 @@ const App = () => {
     setTranscriptions(savedTranscriptions);
   }, []);
 
+  // Start recording audio
   const startRecording = () => {
     setAudioChunks([]);
     mediaRecorder?.start();
     setIsRecording(true);
+    console.log("Recording started...");
   };
 
+  // Stop recording audio
   const stopRecording = () => {
     mediaRecorder?.stop();
     setIsRecording(false);
+    console.log("Recording stopped...");
 
+    // When stop is triggered, send audio to backend
     mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
       sendAudioToBackend(audioBlob);
     };
   };
 
+  // Send audio to backend for transcription
   const sendAudioToBackend = (audioBlob) => {
+    console.log("Sending audio to backend:", audioBlob);
     const formData = new FormData();
-    formData.append("audio", audioBlob, "audio.wav");
+    formData.append("audio", audioBlob, "audio.ogg"); // Send as OGG format
     formData.append("service", service);
     formData.append("language", language);
 
-    fetch("https://transkripsiya-backend.azurewebsites.net/upload_audio", {
+    fetch("http://localhost:5000/upload_audio", {
       method: "POST",
       body: formData,
     })
@@ -71,6 +104,31 @@ const App = () => {
       })
       .catch((err) => console.error("Error:", err));
   };
+
+  // Handle silence detection to automatically send audio to backend after a pause
+  const detectSilence = () => {
+    // Clear previous timeout if any
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    // Set a new timeout for 2 seconds of silence (you can adjust this)
+    const id = setTimeout(() => {
+      if (audioChunks.length > 0) {
+        const audioBlob = new Blob(audioChunks, { type: "audio/ogg" });
+        sendAudioToBackend(audioBlob); // Send audio after silence
+        setAudioChunks([]); // Clear audio chunks after sending
+      }
+    }, 2000); // Adjust silence timeout as needed
+    setTimeoutId(id);
+  };
+
+  // Monitor audio data availability and silence detection
+  useEffect(() => {
+    if (audioChunks.length > 0) {
+      detectSilence();
+    }
+  }, [audioChunks]);
 
   return (
     <div className="App">
@@ -99,6 +157,15 @@ const App = () => {
         <button className="download-button" onClick={() => {}}>
           <FaDownload /> Download Log
         </button>
+      </div>
+
+      <div className="transcriptions">
+        <h2>Transcriptions:</h2>
+        {transcriptions.map((entry, index) => (
+          <div key={index}>
+            <strong>{entry.timestamp}</strong>: {entry.text}
+          </div>
+        ))}
       </div>
     </div>
   );
