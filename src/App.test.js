@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 import { io } from 'socket.io-client'; // Import socket.io-client
 
@@ -33,26 +33,26 @@ describe('App', () => {
     expect(screen.getByText(/Stop Recording/i)).toBeInTheDocument();
   });
 
-  test('starts and stops recording', () => {
+  test('starts and stops recording', async () => {
     render(<App />);
 
     // Get the start and stop recording buttons
     const startButton = screen.getByText(/Start Recording/i);
     const stopButton = screen.getByText(/Stop Recording/i);
 
-    // Check that the start button is enabled initially
-    expect(startButton).not.toBeDisabled();
+    // Initially, stop button should be disabled
+    expect(stopButton).toBeDisabled();
 
     // Simulate a click on the start button
     fireEvent.click(startButton);
 
-    // Check that the stop button is enabled after starting the recording
-    expect(stopButton).not.toBeDisabled();
+    // Wait for the stop button to be enabled
+    await waitFor(() => expect(stopButton).not.toBeDisabled());
 
     // Simulate a click on the stop button
     fireEvent.click(stopButton);
 
-    // Check that the start button is re-enabled after stopping the recording
+    // Verify that after stopping, the start button is re-enabled
     expect(startButton).not.toBeDisabled();
   });
 });
