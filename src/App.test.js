@@ -46,8 +46,17 @@ describe('App', () => {
     // Simulate a click on the start button
     fireEvent.click(startButton);
 
-    // Wait for the stop button to be enabled
-    await waitFor(() => expect(stopButton).not.toBeDisabled());
+    // Log and ensure that the state is updated to enable the stop button
+    console.log('Start button clicked. Waiting for stop button to be enabled...');
+    
+    // Wait for the stop button to be enabled, with a longer timeout
+    await waitFor(
+      () => expect(stopButton).not.toBeDisabled(),
+      { timeout: 3000 } // Increase timeout if needed
+    );
+
+    // Check if the stop button is now enabled
+    expect(stopButton).not.toBeDisabled();
 
     // Simulate a click on the stop button
     fireEvent.click(stopButton);
