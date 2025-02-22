@@ -32,7 +32,7 @@ const App = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, []);
+  }, [setSocket]); // Add setSocket as a dependency to fix ESLint warning
 
   // Handle microphone access and MediaRecorder setup
   useEffect(() => {
@@ -56,7 +56,7 @@ const App = () => {
 
     const savedTranscriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
     setTranscriptions(savedTranscriptions);
-  }, []);
+  }, []); // No need to update the dependency array here
 
   // Start recording audio
   const startRecording = () => {
@@ -128,7 +128,7 @@ const App = () => {
     if (audioChunks.length > 0) {
       detectSilence();
     }
-  }, [audioChunks]);
+  }, [audioChunks, detectSilence]); // Add detectSilence to the dependency array
 
   return (
     <div className="App">
