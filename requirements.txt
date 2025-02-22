@@ -1,6 +1,6 @@
-Flask
-flask-cors
-Flask-SocketIO
 azure-cognitiveservices-speech
-eventlet
 requests
+Flask
+Flask-SocketIO
+Flask-Cors
+pydub
