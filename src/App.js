@@ -9,7 +9,7 @@ const App = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [service, setService] = useState("azure");
   const [language, setLanguage] = useState("en-US");
-  const [,, setSocket] = useState(null);  // New state to hold socket connection
+  const [, setSocket] = useState(null);  // New state to hold socket connection
   const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
 
   // Initialize socket connection on component mount
@@ -32,15 +32,17 @@ const App = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [setSocket]); // Add setSocket as a dependency to fix ESLint warning
+  }, []);
 
   // Handle microphone access and MediaRecorder setup
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("getUserMedia is not supported in this environment.");
+      alert("Your browser does not support microphone access. Please try a different browser.");
       return;
     }
 
+    // Request microphone access
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then((stream) => {
         const recorder = new MediaRecorder(stream);
@@ -52,15 +54,22 @@ const App = () => {
       })
       .catch((err) => {
         console.error("Error accessing microphone:", err);
+        // Handle the error, perhaps show an error message to the user
+        if (err.name === "NotAllowedError") {
+          alert("Microphone access was denied. Please allow microphone access and try again.");
+        } else {
+          alert("An error occurred while accessing the microphone.");
+        }
       });
 
+    // Load previous transcriptions from localStorage
     const savedTranscriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
     setTranscriptions(savedTranscriptions);
-  }, []); // No need to update the dependency array here
+  }, []);
 
   // Start recording audio
   const startRecording = () => {
-    setAudioChunks([]);
+    setAudioChunks([]); // Reset audio chunks before starting
     mediaRecorder?.start();
     setIsRecording(true);
     console.log("Recording started...");
@@ -128,7 +137,7 @@ const App = () => {
     if (audioChunks.length > 0) {
       detectSilence();
     }
-  }, [audioChunks, detectSilence]); // Add detectSilence to the dependency array
+  }, [audioChunks]);
 
   return (
     <div className="App">
