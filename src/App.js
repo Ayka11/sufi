@@ -14,7 +14,11 @@ const App = () => {
 
   // Initialize socket connection on component mount
   useEffect(() => {
+<<<<<<< HEAD
     const newSocket = io("https://transkripsiya-backend.azurewebsites.net/", {
+=======
+    const newSocket = io("http://localhost:5000", {
+>>>>>>> 1b15f4bab47a6594a0575391b09a402bce7a40c0
       transports: ["websocket"],  // Force WebSocket transport
     });
 
@@ -87,7 +91,11 @@ const App = () => {
     formData.append("service", service);
     formData.append("language", language);
 
+<<<<<<< HEAD
     fetch("https://transkripsiya-backend.azurewebsites.net/upload_audio", {
+=======
+    fetch("http://localhost:5000/upload_audio", {
+>>>>>>> 1b15f4bab47a6594a0575391b09a402bce7a40c0
       method: "POST",
       body: formData,
     })

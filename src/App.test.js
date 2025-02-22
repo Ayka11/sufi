@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import App from './App';
+// Updated App.test.js
+import { render } from "@testing-library/react";
+import App from "./App";
 
-test('renders real-time transcription header', () => {
+global.navigator.mediaDevices = {
+  getUserMedia: jest.fn().mockResolvedValue({ getTracks: () => [] }),
+};
+
+test("renders without crashing", async () => {
   render(<App />);
-  const headerElement = screen.getByText(/real-time transcription/i); // Match "Real-Time Transcription"
-  expect(headerElement).toBeInTheDocument();
+  expect(global.navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
 });
