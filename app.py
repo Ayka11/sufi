@@ -14,6 +14,10 @@ app = Flask(__name__)
 # Enable CORS for all origins, including WebSocket support
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Ensure eventlet is installed
+import eventlet
+eventlet.monkey_patch()
+
 # Flask-SocketIO initialization with eventlet
 socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use eventlet for async WebSocket support
 
