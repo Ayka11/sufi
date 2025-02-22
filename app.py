@@ -63,6 +63,10 @@ def upload_audio():
         return jsonify({"error": "Empty audio file"}), 400
 
     try:
+        # Check the format of the audio file before processing
+        if not is_valid_audio(file_path):
+            return jsonify({"error": "Invalid audio file format"}), 400
+
         if service == "azure":
             transcription_text = transcribe_with_azure(file_path, language)
         elif service == "google":
@@ -125,6 +129,20 @@ def transcribe_with_google(file_path, language):
     if "results" in result:
         return result["results"][0]["alternatives"][0]["transcript"]
     return "No transcription result"
+
+# 🔹 Audio File Validation (Ensures the file is valid)
+def is_valid_audio(file_path):
+    # Add your custom logic to validate the audio file format
+    try:
+        with open(file_path, "rb") as file:
+            # Check the first few bytes for standard WAV header
+            header = file.read(4)
+            if header != b'RIFF':
+                return False  # Invalid audio file, not a valid WAV file
+            return True
+    except Exception as e:
+        return False
+
 
 # 🔹 Download Transcription Log
 @app.route('/downloads', methods=['GET'])
