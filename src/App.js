@@ -121,7 +121,7 @@ const App = () => {
       }
     }, 2000); // Adjust silence timeout as needed
     setTimeoutId(id);
-  }, [audioChunks, timeoutId]); // Add audioChunks and timeoutId as dependencies to ensure correctness
+  }, [audioChunks, timeoutId, sendAudioToBackend]); // Include sendAudioToBackend in dependencies
 
   // Monitor audio data availability and silence detection
   useEffect(() => {
