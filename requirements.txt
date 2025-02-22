@@ -4,3 +4,4 @@ Flask
 Flask-SocketIO
 Flask-Cors
 pydub
+eventlet
