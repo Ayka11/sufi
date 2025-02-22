@@ -11,8 +11,8 @@ app = Flask(__name__)
 # Enable CORS for all origins, including WebSocket support
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Flask-SocketIO initialization with CORS settings
-socketio = SocketIO(app, async_mode='gevent', cors_allowed_origins="*")  # Use gevent for async WebSocket support
+# Flask-SocketIO initialization with eventlet
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use eventlet for async WebSocket support
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
@@ -166,5 +166,5 @@ def handle_disconnect():
     app.logger.info("Client disconnected")
 
 if __name__ == "__main__":
-    # Run with gevent workers to handle async WebSocket connections properly
+    # Run with eventlet workers to handle async WebSocket connections properly
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
