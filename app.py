@@ -1,4 +1,6 @@
-import azure.cognitiveservices.speech as speechsdk
+import eventlet
+eventlet.monkey_patch()  # Add this at the very beginning
+
 import os
 import requests
 from datetime import datetime
@@ -8,15 +10,12 @@ from flask_cors import CORS
 import tempfile
 import shutil
 from pydub import AudioSegment
+import azure.cognitiveservices.speech as speechsdk
 
 app = Flask(__name__)
 
 # Enable CORS for all origins, including WebSocket support
 CORS(app, resources={r"/*": {"origins": "*"}})
-
-# Ensure eventlet is installed
-import eventlet
-eventlet.monkey_patch()
 
 # Flask-SocketIO initialization with eventlet
 socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use eventlet for async WebSocket support
