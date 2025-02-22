@@ -8,11 +8,11 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-# Enable CORS for all origins
+# Enable CORS for all origins, including WebSocket support
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Flask-SocketIO initialization
-socketio = SocketIO(app, async_mode='eventlet')
+# Flask-SocketIO initialization with CORS settings
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Allow all origins for WebSocket
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
@@ -68,7 +68,7 @@ def upload_audio():
     with open(log_file_path, "a", encoding="utf-8") as log_file:
         log_file.write(log_entry)
 
-    # Emit transcription to frontend in real-time
+    # Emit transcription to frontend via SocketIO
     socketio.emit('transcription', {'transcription': transcription_text})
 
     return jsonify({"transcription": transcription_text})
@@ -113,7 +113,7 @@ def downloads():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# SocketIO Events
+# WebSocket Events
 @socketio.on('connect')
 def handle_connect():
     print("Client connected")
@@ -124,4 +124,5 @@ def handle_disconnect():
     print("Client disconnected")
 
 if __name__ == "__main__":
+    # Run with eventlet to support WebSocket connections
     socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
