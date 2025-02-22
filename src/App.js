@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { FaMicrophone, FaStop, FaDownload } from "react-icons/fa";
 import { io } from "socket.io-client"; // Import socket.io-client
 
@@ -32,15 +32,17 @@ const App = () => {
     return () => {
       newSocket.disconnect();
     };
-  }, [setSocket]); // Add setSocket as a dependency to fix ESLint warning
+  }, []);
 
   // Handle microphone access and MediaRecorder setup
   useEffect(() => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("getUserMedia is not supported in this environment.");
+      alert("Your browser does not support microphone access. Please try a different browser.");
       return;
     }
 
+    // Request microphone access
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then((stream) => {
         const recorder = new MediaRecorder(stream);
@@ -52,14 +54,42 @@ const App = () => {
       })
       .catch((err) => {
         console.error("Error accessing microphone:", err);
+        // Handle the error, perhaps show an error message to the user
+        if (err.name === "NotAllowedError") {
+          alert("Microphone access was denied. Please allow microphone access and try again.");
+        } else {
+          alert("An error occurred while accessing the microphone.");
+        }
       });
 
+    // Load previous transcriptions from localStorage
     const savedTranscriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
     setTranscriptions(savedTranscriptions);
-  }, []); // No need to update the dependency array here
+  }, []);
 
-  // Memoize the sendAudioToBackend function using useCallback
-  const sendAudioToBackend = useCallback((audioBlob) => {
+  // Start recording audio
+  const startRecording = () => {
+    setAudioChunks([]); // Reset audio chunks before starting
+    mediaRecorder?.start();
+    setIsRecording(true);
+    console.log("Recording started...");
+  };
+
+  // Stop recording audio
+  const stopRecording = () => {
+    mediaRecorder?.stop();
+    setIsRecording(false);
+    console.log("Recording stopped...");
+
+    // When stop is triggered, send audio to backend
+    mediaRecorder.onstop = () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
+      sendAudioToBackend(audioBlob);
+    };
+  };
+
+  // Send audio to backend for transcription
+  const sendAudioToBackend = (audioBlob) => {
     console.log("Sending audio to backend:", audioBlob);
     const formData = new FormData();
     formData.append("audio", audioBlob, "audio.ogg"); // Send as OGG format
@@ -82,31 +112,10 @@ const App = () => {
         localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
       })
       .catch((err) => console.error("Error:", err));
-  }, [service, language, transcriptions]); // Add dependencies to avoid stale closures
-
-  // Start recording audio
-  const startRecording = () => {
-    setAudioChunks([]);
-    mediaRecorder?.start();
-    setIsRecording(true);
-    console.log("Recording started...");
-  };
-
-  // Stop recording audio
-  const stopRecording = () => {
-    mediaRecorder?.stop();
-    setIsRecording(false);
-    console.log("Recording stopped...");
-
-    // When stop is triggered, send audio to backend
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
-      sendAudioToBackend(audioBlob);
-    };
   };
 
   // Handle silence detection to automatically send audio to backend after a pause
-  const detectSilence = useCallback(() => {
+  const detectSilence = () => {
     // Clear previous timeout if any
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -121,14 +130,14 @@ const App = () => {
       }
     }, 2000); // Adjust silence timeout as needed
     setTimeoutId(id);
-  }, [audioChunks, timeoutId, sendAudioToBackend]); // Include sendAudioToBackend in dependencies
+  };
 
   // Monitor audio data availability and silence detection
   useEffect(() => {
     if (audioChunks.length > 0) {
       detectSilence();
     }
-  }, [audioChunks, detectSilence]); // Add detectSilence to the dependency array
+  }, [audioChunks]);
 
   return (
     <div className="App">
