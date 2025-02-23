@@ -24,10 +24,12 @@ const App = () => {
     // Listen for transcriptions from the backend
     newSocket.on("transcription", (data) => {
       console.log("Received transcription:", data.transcription);
-      setTranscriptions((prev) => [
-        ...prev,
-        { timestamp: new Date().toLocaleString(), text: data.transcription },
-      ]);
+      if (data.transcription) {
+        setTranscriptions((prev) => [
+          ...prev,
+          { timestamp: new Date().toLocaleString(), text: data.transcription },
+        ]);
+      }
     });
 
     return () => {
@@ -82,6 +84,7 @@ const App = () => {
     })
       .then((response) => response.json())
       .then((data) => {
+        console.log("Received transcription from backend:", data);
         const newEntry = {
           timestamp: new Date().toLocaleString(),
           text: data.transcription || "No transcription available",
@@ -93,16 +96,15 @@ const App = () => {
         localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
       })
       .catch((err) => console.error("Error:", err));
-  }, [service, language]);  // Added service and language as dependencies to ensure the callback stays up-to-date
+  }, [service, language]);
 
   // Handle silence detection to automatically send audio to backend after a pause
   const detectSilence = useCallback(() => {
-    // Clear previous timeout if any
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
 
-    // Set a new timeout for 2 seconds of silence (you can adjust this)
+    // Set a new timeout for 2 seconds of silence
     const id = setTimeout(() => {
       if (audioChunks.length > 0) {
         const audioBlob = new Blob(audioChunks, { type: "audio/ogg" });
@@ -111,7 +113,7 @@ const App = () => {
       }
     }, 2000); // Adjust silence timeout as needed
     setTimeoutId(id);
-  }, [audioChunks, timeoutId, sendAudioToBackend]);  // Added sendAudioToBackend to dependencies
+  }, [audioChunks, timeoutId, sendAudioToBackend]);
 
   // Monitor audio data availability and silence detection
   useEffect(() => {
@@ -134,7 +136,6 @@ const App = () => {
     setIsRecording(false);
     console.log("Recording stopped...");
 
-    // When stop is triggered, send audio to backend
     mediaRecorder.onstop = () => {
       const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
       sendAudioToBackend(audioBlob);
