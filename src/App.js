@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FaMicrophone, FaStop, FaDownload } from "react-icons/fa";
 import { io } from "socket.io-client"; // Import socket.io-client
+import './App.css';  // Import the App.css file for styling
 
 const App = () => {
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -67,6 +68,58 @@ const App = () => {
     setTranscriptions(savedTranscriptions);
   }, []);
 
+  // Wrap sendAudioToBackend in useCallback to prevent unnecessary re-creations
+  const sendAudioToBackend = useCallback((audioBlob) => {
+    console.log("Sending audio to backend:", audioBlob);
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "audio.ogg"); // Send as OGG format
+    formData.append("service", service);
+    formData.append("language", language);
+
+    fetch("https://transkripsiya-backend.azurewebsites.net/upload_audio", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const newEntry = {
+          timestamp: new Date().toLocaleString(),
+          text: data.transcription || "No transcription available",
+        };
+
+        // Save only the latest transcription
+        const updatedTranscriptions = [newEntry]; // Overwrite with the latest transcription
+        setTranscriptions(updatedTranscriptions);
+        localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
+      })
+      .catch((err) => console.error("Error:", err));
+  }, [service, language]);  // Added service and language as dependencies to ensure the callback stays up-to-date
+
+  // Handle silence detection to automatically send audio to backend after a pause
+  const detectSilence = useCallback(() => {
+    // Clear previous timeout if any
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    // Set a new timeout for 2 seconds of silence (you can adjust this)
+    const id = setTimeout(() => {
+      if (audioChunks.length > 0) {
+        const audioBlob = new Blob(audioChunks, { type: "audio/ogg" });
+        sendAudioToBackend(audioBlob); // Send audio after silence
+        setAudioChunks([]); // Clear audio chunks after sending
+      }
+    }, 2000); // Adjust silence timeout as needed
+    setTimeoutId(id);
+  }, [audioChunks, timeoutId, sendAudioToBackend]);  // Added sendAudioToBackend to dependencies
+
+  // Monitor audio data availability and silence detection
+  useEffect(() => {
+    if (audioChunks.length > 0) {
+      detectSilence();
+    }
+  }, [audioChunks, detectSilence]);
+
   // Start recording audio
   const startRecording = () => {
     setAudioChunks([]); // Reset audio chunks before starting
@@ -88,56 +141,17 @@ const App = () => {
     };
   };
 
-  // Send audio to backend for transcription
-  const sendAudioToBackend = (audioBlob) => {
-    console.log("Sending audio to backend:", audioBlob);
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "audio.ogg"); // Send as OGG format
-    formData.append("service", service);
-    formData.append("language", language);
-
-    fetch("https://transkripsiya-backend.azurewebsites.net/upload_audio", {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        const newEntry = {
-          timestamp: new Date().toLocaleString(),
-          text: data.transcription || "No transcription available",
-        };
-
-        const updatedTranscriptions = [...transcriptions, newEntry];
-        setTranscriptions(updatedTranscriptions);
-        localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
-      })
-      .catch((err) => console.error("Error:", err));
+  // Download the latest transcription log
+  const downloadLog = () => {
+    const latestTranscription = transcriptions[0]; // Only the latest transcription
+    const blob = new Blob([JSON.stringify(latestTranscription, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transcription.json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
-
-  // Handle silence detection to automatically send audio to backend after a pause
-  const detectSilence = () => {
-    // Clear previous timeout if any
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    // Set a new timeout for 2 seconds of silence (you can adjust this)
-    const id = setTimeout(() => {
-      if (audioChunks.length > 0) {
-        const audioBlob = new Blob(audioChunks, { type: "audio/ogg" });
-        sendAudioToBackend(audioBlob); // Send audio after silence
-        setAudioChunks([]); // Clear audio chunks after sending
-      }
-    }, 2000); // Adjust silence timeout as needed
-    setTimeoutId(id);
-  };
-
-  // Monitor audio data availability and silence detection
-  useEffect(() => {
-    if (audioChunks.length > 0) {
-      detectSilence();
-    }
-  }, [audioChunks]);
 
   return (
     <div className="App">
@@ -163,18 +177,18 @@ const App = () => {
         <button className="stop-button" onClick={stopRecording} disabled={!isRecording}>
           <FaStop /> Stop Recording
         </button>
-        <button className="download-button" onClick={() => {}}>
+        <button className="download-button" onClick={downloadLog}>
           <FaDownload /> Download Log
         </button>
       </div>
 
       <div className="transcriptions">
-        <h2>Transcriptions:</h2>
-        {transcriptions.map((entry, index) => (
-          <div key={index}>
-            <strong>{entry.timestamp}</strong>: {entry.text}
+        <h2>Latest Transcription:</h2>
+        {transcriptions.length > 0 && (
+          <div>
+            <strong>{transcriptions[0].timestamp}</strong>: {transcriptions[0].text}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
