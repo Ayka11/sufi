@@ -39,6 +39,6 @@
     ]
   },
   "jest": {
-    "testEnvironment": "jsdom"
+   "testEnvironment": "node"
   }
 }
