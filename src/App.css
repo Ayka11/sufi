@@ -1,123 +1,113 @@
 /* Global Styles */
-body {
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   font-family: Arial, sans-serif;
-  background-color: #f4f6f9;
+}
+
+body {
+  background-color: #f4f4f9;
   color: #333;
-  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
   margin: 0;
 }
 
-/* Header */
+/* App Container */
+.App {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 400px;
+  padding: 20px;
+  text-align: center;
+}
+
 h1 {
-  font-size: 2.5rem;
-  color: #444;
-  text-align: center;
+  font-size: 1.5rem;
+  color: #333;
   margin-bottom: 20px;
 }
 
-/* Transcription Box */
-.transcription-box {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 10px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  height: 150px;
-  overflow-y: auto;
-}
-
-.transcription-text {
-  font-size: 1.2rem;
-  white-space: pre-wrap; /* Ensures new lines from server are respected */
-  word-wrap: break-word;
-}
-
-/* Controls */
+/* Controls Section */
 .controls {
-  text-align: center;
+  margin-bottom: 20px;
+}
+
+label {
+  font-size: 1rem;
+  margin-right: 10px;
+  color: #555;
+}
+
+select, button {
+  padding: 10px;
+  margin-top: 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  outline: none;
 }
 
 select {
-  padding: 10px;
-  margin-bottom: 20px;
-  font-size: 1rem;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  background-color: #fff;
+  width: 120px;
 }
 
-/* Buttons */
 button {
-  padding: 12px 20px;
-  font-size: 1rem;
-  margin: 10px;
-  border: none;
-  border-radius: 5px;
+  width: 100%;
+  background-color: #007BFF;
+  color: white;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+  border: none;
+  margin-top: 10px;
 }
 
 button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+  background-color: #ddd;
 }
 
-/* Start Button */
-.start-button {
-  background-color: #4caf50;
-  color: white;
+button:hover:not(:disabled) {
+  background-color: #0056b3;
 }
 
-.start-button:hover {
-  background-color: #45a049;
+/* Transcriptions Section */
+.transcriptions {
+  background-color: #fafafa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  min-height: 50px;
 }
 
-/* Stop Button */
-.stop-button {
-  background-color: #f44336;
-  color: white;
+.transcriptions h2 {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #333;
 }
 
-.stop-button:hover {
-  background-color: #e53935;
+.transcriptions div {
+  font-size: 1rem;
+  color: #555;
+  word-wrap: break-word;
 }
 
-/* Download Button */
+.transcriptions strong {
+  color: #007BFF;
+}
+
+/* Button Styles for Download */
 .download-button {
-  background-color: #2196f3;
+  background-color: #28a745;
+  border-color: #28a745;
+  font-size: 1rem;
   color: white;
 }
 
 .download-button:hover {
-  background-color: #1976d2;
-}
-
-/* Icons */
-button svg {
-  margin-right: 8px;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 600px) {
-  .transcription-box {
-    height: 120px;
-  }
-
-  h1 {
-    font-size: 1.8rem;
-  }
-
-  select {
-    width: 100%;
-  }
-
-  button {
-    width: 100%;
-    margin: 5px 0;
-  }
+  background-color: #218838;
+  border-color: #1e7e34;
 }
