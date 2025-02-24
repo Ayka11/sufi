@@ -3,65 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Audio Transcription</title>
+    <title>Real-Time Transcription</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
 </head>
 <body>
-    <h2>Real-Time Audio Transcription</h2>
-    <button id="startRecording">Start Recording</button>
-    <p id="transcription"></p>
-    
-    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <div id="app">
+        <h1>Live Transcription</h1>
+        <button @click="startRecording" v-if="!recording">Start</button>
+        <button @click="stopRecording" v-if="recording">Stop</button>
+        <p>{{ transcription }}</p>
+    </div>
+
     <script>
-        const { createApp, ref, onMounted } = Vue;
-        
-        createApp({
-            setup() {
-                const transcription = ref("");
-                let mediaRecorder;
-                let audioChunks = [];
-                let recordingInterval;
-                
-                const startRecording = async () => {
+        new Vue({
+            el: '#app',
+            data: {
+                recording: false,
+                mediaRecorder: null,
+                audioChunks: [],
+                transcription: ''
+            },
+            methods: {
+                async startRecording() {
+                    this.recording = true;
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    
-                    mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
-                    };
-                    
-                    mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        sendAudio(audioBlob);
-                        audioChunks = [];
-                        mediaRecorder.start(); // Start next recording immediately
-                    };
-                    
-                    mediaRecorder.start();
-                    recordingInterval = setInterval(() => {
-                        mediaRecorder.stop();
-                    }, 15000);
-                };
-                
-                const sendAudio = async (audioBlob) => {
+                    this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    this.mediaRecorder.ondataavailable = event => this.audioChunks.push(event.data);
+                    this.mediaRecorder.start();
+
+                    this.sendAudioChunks();
+                },
+                stopRecording() {
+                    this.recording = false;
+                    if (this.mediaRecorder) {
+                        this.mediaRecorder.stop();
+                    }
+                },
+                async sendAudioChunks() {
+                    while (this.recording) {
+                        await new Promise(resolve => setTimeout(resolve, 15000));
+                        if (this.audioChunks.length > 0) {
+                            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                            this.audioChunks = [];
+                            this.uploadAudio(audioBlob);
+                        }
+                    }
+                },
+                async uploadAudio(blob) {
                     const formData = new FormData();
-                    formData.append("audio", audioBlob, "recording.wav");
-                    
-                    const response = await fetch("/transcribe", {
-                        method: "POST",
-                        body: formData
-                    });
-                    
-                    const data = await response.json();
-                    transcription.value += data.transcript + " ";
-                };
-                
-                onMounted(() => {
-                    document.getElementById("startRecording").addEventListener("click", startRecording);
-                });
-                
-                return { transcription };
+                    formData.append('file', blob, 'recording.webm');
+
+                    try {
+                        const response = await fetch('/transcribe', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.transcription = data.transcription;
+                        } else {
+                            console.error('Error:', response.status);
+                        }
+                    } catch (error) {
+                        console.error('Upload failed:', error);
+                    }
+                }
             }
-        }).mount("body");
+        });
     </script>
 </body>
 </html>
