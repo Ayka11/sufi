@@ -83,12 +83,12 @@
             mediaRecorder.onstop = () => {
                 if (isRecording) {
                     mediaRecorder.start();
-                    setTimeout(() => mediaRecorder.stop(), 5000);
+                    setTimeout(() => mediaRecorder.stop(), 15000);
                 }
             };
             
             mediaRecorder.start();
-            setTimeout(() => mediaRecorder.stop(), 5000);
+            setTimeout(() => mediaRecorder.stop(), 15000);
         }
 
         async function sendAudio(audioBlob) {
