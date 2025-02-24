@@ -1,191 +1,113 @@
-import eventlet
-eventlet.monkey_patch()  # Add this at the very beginning
-
+import azure.cognitiveservices.speech as speechsdk
+import time
 import os
-import requests
 from datetime import datetime
-from flask import Flask, jsonify, request, send_from_directory
+import base64
+import requests
+from flask import Flask, jsonify, request, send_from_directory, render_template
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
-import tempfile
-import shutil
-from pydub import AudioSegment
-import azure.cognitiveservices.speech as speechsdk
+import threading
 
 app = Flask(__name__)
-
-# Enable CORS for all origins, including WebSocket support
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-# Flask-SocketIO initialization with eventlet
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Allow all origins for WebSocket
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
 AZURE_REGION = "southeastasia"
 
-# Google Speech API setup (if needed)
+# Google Speech API setup
 GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
 GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}"
 
-# File storage
 UPLOAD_FOLDER = 'downloads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-log_file_path = os.path.join(UPLOAD_FOLDER, "transcription_log.txt")
+transcription_text = ""
+transcription_active = False
+speech_recognizer = None
 
-@app.before_request
-def create_log_file():
-    if not os.path.exists(log_file_path):
-        with open(log_file_path, "w", encoding="utf-8") as log_file:
-            log_file.write("Transcription Log:\n")
+def transcribe_azure(language):
+    global transcription_text, transcription_active, speech_recognizer
 
-@app.route('/')
-def home():
-    return 'Backend is running!'
-
-# 🔹 Upload & Transcribe Audio Route
-@app.route('/upload_audio', methods=['POST'])
-def upload_audio():
-    if 'audio' not in request.files:
-        return jsonify({"error": "No audio file uploaded"}), 400
-
-    audio_file = request.files['audio']
-    service = request.form.get("service", "azure")  # Default to Azure
-    language = request.form.get("language", "en-US")
-
-    # Check if the audio file is not empty
-    if audio_file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
-
-    file_path = os.path.join(UPLOAD_FOLDER, "uploaded_audio")
-    audio_file.save(file_path)
-
-    # Check if the audio file is valid by ensuring it's not zero bytes
-    if os.path.getsize(file_path) == 0:
-        return jsonify({"error": "Empty audio file"}), 400
-
-    # Ensure audio is in the correct format (WAV, 16-bit PCM, 16kHz)
-    try:
-        # Convert to WAV using pydub
-        wav_file_path = os.path.join(UPLOAD_FOLDER, "converted_audio.wav")
-        audio = AudioSegment.from_file(file_path)
-        audio = audio.set_channels(1)  # Mono channel
-        audio = audio.set_sample_width(2)  # 16-bit sample width
-        audio = audio.set_frame_rate(16000)  # 16kHz sampling rate
-        audio.export(wav_file_path, format="wav")
-    except Exception as e:
-        return jsonify({"error": f"Error during audio conversion: {str(e)}"}), 500
-
-    try:
-        # Process the audio
-        if service == "azure":
-            transcription_text = transcribe_with_azure(wav_file_path, language)
-        elif service == "google":
-            transcription_text = transcribe_with_google(wav_file_path, language)
-        else:
-            return jsonify({"error": "Invalid service selected"}), 400
-
-        # Log transcription
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {transcription_text}\n"
-
-        with open(log_file_path, "a", encoding="utf-8") as log_file:
-            log_file.write(log_entry)
-
-        # Emit transcription to frontend via SocketIO
-        try:
-            socketio.emit('transcription', {'transcription': transcription_text}, broadcast=True)
-        except Exception as e:
-            app.logger.error(f"Socket emission error: {str(e)}")
-        
-        return jsonify({"transcription": transcription_text})
-
-    except Exception as e:
-        # Log any exception that occurs during the transcription process
-        app.logger.error(f"Error during transcription: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
-# 🔹 Azure Speech-to-Text
-def transcribe_with_azure(file_path, language):
     speech_config = speechsdk.SpeechConfig(subscription=AZURE_SUBSCRIPTION_KEY, region=AZURE_REGION)
     speech_config.speech_recognition_language = language
-    audio_input = speechsdk.audio.AudioConfig(filename=file_path)
-    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_input)
+    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
 
-    try:
-        result = speech_recognizer.recognize_once()
-        if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            return result.text
-        elif result.reason == speechsdk.ResultReason.NoMatch:
-            raise Exception(f"No speech could be recognized in the audio.")
-        elif result.reason == speechsdk.ResultReason.Canceled:
-            cancellation_details = result.cancellation_details
-            raise Exception(f"Azure transcription failed: {cancellation_details.reason}, {cancellation_details.error_details}")
-        else:
-            raise Exception(f"Azure transcription failed: {result.reason}")
-    except Exception as e:
-        raise Exception(f"Error during Azure transcription: {str(e)}")
+    def recognized_handler(evt):
+        global transcription_text
+        transcription_text = evt.result.text
+        print(f"Azure Recognized: {transcription_text}")
+        socketio.emit('transcription', {'transcription': transcription_text})
 
+    speech_recognizer.recognized.connect(recognized_handler)
+    speech_recognizer.start_continuous_recognition()
 
-# 🔹 Google Speech-to-Text
-def transcribe_with_google(file_path, language):
-    with open(file_path, "rb") as audio_file:
-        audio_content = audio_file.read()
+    while transcription_active:
+        time.sleep(1)
 
-    request_data = {
-        "config": {
-            "encoding": "LINEAR16",
-            "languageCode": language
-        },
-        "audio": {
-            "content": audio_content.decode("ISO-8859-1")  # Encode file to base64
-        }
+    speech_recognizer.stop_continuous_recognition()
+    print("Azure Transcription Stopped.")
+
+def transcribe_google(audio_data, language):
+    global transcription_text
+
+    audio_content = base64.b64encode(audio_data).decode('utf-8')
+    payload = {
+        "config": {"encoding": "LINEAR16", "sampleRateHertz": 16000, "languageCode": language},
+        "audio": {"content": audio_content}
     }
 
-    response = requests.post(GOOGLE_SPEECH_URL, json=request_data)
-    result = response.json()
-
-    if "results" in result:
-        return result["results"][0]["alternatives"][0]["transcript"]
-    return "No transcription result"
-
-# 🔹 Audio File Validation (Ensures the file is valid)
-def is_valid_audio(file_path):
     try:
-        with open(file_path, "rb") as file:
-            header = file.read(4)
-            if header != b'RIFF':
-                return False
-            return True
+        response = requests.post(GOOGLE_SPEECH_URL, json=payload)
+        if response.status_code == 200:
+            result = response.json()
+            if 'results' in result:
+                transcription_text = result['results'][0]['alternatives'][0]['transcript']
+                print(f"Google Recognized: {transcription_text}")
+                socketio.emit('transcription', {'transcription': transcription_text})
+        else:
+            print(f"Error {response.status_code}: {response.text}")
     except Exception as e:
-        return False
+        print(f"Error during Google Speech API request: {e}")
 
+@socketio.on('audio_data')
+def handle_audio_data(data):
+    global transcription_active
+    if transcription_active:
+        audio_chunk = base64.b64decode(data['audio_data'])
+        transcribe_google(audio_chunk, data['language'])
 
-# 🔹 Download Transcription Log
-@app.route('/downloads', methods=['GET'])
-def downloads():
-    try:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], "transcription_log.txt")
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.route('/')
+def index():
+    return render_template('index.html')
 
+@app.route('/start', methods=['POST'])
+def start_transcription():
+    global transcription_active
 
-# WebSocket Events
-@socketio.on('connect')
-def handle_connect():
-    app.logger.info("Client connected")
-    emit('transcription', {'transcription': "Connected!"})
+    if transcription_active:
+        return jsonify({"message": "Transcription already running."}), 400
 
-@socketio.on('disconnect')
-def handle_disconnect():
-    app.logger.info("Client disconnected")
+    data = request.get_json()
+    service = data.get('service', 'azure')
+    language = data.get('language', 'en-US')
 
+    transcription_active = True
+    if service == 'azure':
+        thread = threading.Thread(target=transcribe_azure, args=(language,))
+        thread.start()
+    return jsonify({"message": "Speech recognition started."}), 200
+
+@app.route('/stop', methods=['POST'])
+def stop_transcription():
+    global transcription_active
+    transcription_active = False
+    return jsonify({"message": "Speech recognition stopped."}), 200
 
 if __name__ == "__main__":
-    # Run with eventlet workers to handle async WebSocket connections properly
-    socketio.run(app, debug=True, use_reloader=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
