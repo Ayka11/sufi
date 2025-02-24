@@ -7,66 +7,90 @@
 </head>
 <body>
     <h1>Live Transcription</h1>
-    <button id="start">Start Recording</button>
-    <button id="stop">Stop Recording</button>
-    <p id="transcription"></p>
-    
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <button id="downloadTranscription">Download Transcription</button>
+    <ul id="transcriptionList"></ul>
+
     <script>
         let mediaRecorder;
         let audioChunks = [];
-        let recording = false;
-        
-        async function startRecording() {
+        let transcriptions = [];
+
+        document.getElementById("startRecording").addEventListener("click", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             
-            mediaRecorder.ondataavailable = event => {
+            mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
-            };
-            
-            mediaRecorder.onstop = async () => {
-                if (audioChunks.length > 0) {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    sendAudio(audioBlob);
-                    audioChunks = []; // Reset for next batch
-                    if (recording) {
-                        startRecording(); // Start new recording immediately
-                    }
+                if (mediaRecorder.state === "inactive") {
+                    sendAudio();
                 }
             };
-            
+
             mediaRecorder.start();
-            setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
+            document.getElementById("startRecording").disabled = true;
+            document.getElementById("stopRecording").disabled = false;
+            
+            setInterval(() => {
+                if (mediaRecorder.state === "recording") {
                     mediaRecorder.stop();
+                    mediaRecorder.start();
                 }
-            }, 15000); // Stop recording every 15 seconds
-        }
-        
-        async function sendAudio(blob) {
+            }, 15000);
+        });
+
+        document.getElementById("stopRecording").addEventListener("click", () => {
+            mediaRecorder.stop();
+            document.getElementById("startRecording").disabled = false;
+            document.getElementById("stopRecording").disabled = true;
+        });
+
+        function sendAudio() {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioChunks = [];
             const formData = new FormData();
-            formData.append("audio", blob, "audio.webm");
-            
-            const response = await fetch("/transcribe", {
-                method: "POST",
-                body: formData
-            });
-            
-            const data = await response.json();
-            document.getElementById("transcription").textContent += data.transcription + " ";
+            formData.append("audio", audioBlob, "audio.webm");
+
+            fetch("/transcribe", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.transcription) {
+                        const timestamp = new Date().toLocaleTimeString();
+                        transcriptions.push(`${timestamp}: ${data.transcription}`);
+                        updateTranscriptionList();
+                        localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
+                    }
+                })
+                .catch(error => console.error("Error:", error));
         }
-        
-        document.getElementById("start").addEventListener("click", () => {
-            recording = true;
-            startRecording();
+
+        function updateTranscriptionList() {
+            const list = document.getElementById("transcriptionList");
+            list.innerHTML = "";
+            transcriptions.forEach(text => {
+                const li = document.createElement("li");
+                li.textContent = text;
+                list.appendChild(li);
+            });
+        }
+
+        document.getElementById("downloadTranscription").addEventListener("click", () => {
+            const textContent = transcriptions.join("\n");
+            const blob = new Blob([textContent], { type: "text/plain" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "transcription.txt";
+            a.click();
         });
-        
-        document.getElementById("stop").addEventListener("click", () => {
-            recording = false;
-            if (mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
+
+        window.onload = function() {
+            const savedTranscriptions = localStorage.getItem("transcriptions");
+            if (savedTranscriptions) {
+                transcriptions = JSON.parse(savedTranscriptions);
+                updateTranscriptionList();
             }
-        });
+        };
     </script>
 </body>
 </html>
