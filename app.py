@@ -2,7 +2,7 @@ import eventlet
 eventlet.monkey_patch()  # Add this at the very beginning
 
 import os
-import requests  # Use the regular requests library
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
@@ -18,7 +18,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Flask-SocketIO initialization with eventlet
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use eventlet for async WebSocket support
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Allow all origins for WebSocket
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
@@ -98,7 +98,7 @@ def upload_audio():
 
         # Emit transcription to frontend via SocketIO
         try:
-            socketio.emit('transcription', {'transcription': transcription_text})
+            socketio.emit('transcription', {'transcription': transcription_text}, broadcast=True)
         except Exception as e:
             app.logger.error(f"Socket emission error: {str(e)}")
         
@@ -184,6 +184,7 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     app.logger.info("Client disconnected")
+
 
 if __name__ == "__main__":
     # Run with eventlet workers to handle async WebSocket connections properly
