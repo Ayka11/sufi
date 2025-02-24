@@ -3,71 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Transcription</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <title>Live Transcription</title>
 </head>
 <body>
-    <div id="app">
-        <h1>Live Transcription</h1>
-        <button @click="startRecording" v-if="!recording">Start</button>
-        <button @click="stopRecording" v-if="recording">Stop</button>
-        <p>{{ transcription }}</p>
-    </div>
-
+    <h1>Live Transcription</h1>
+    <button id="start">Start Recording</button>
+    <button id="stop">Stop Recording</button>
+    <p id="transcription"></p>
+    
     <script>
-        new Vue({
-            el: '#app',
-            data: {
-                recording: false,
-                mediaRecorder: null,
-                audioChunks: [],
-                transcription: ''
-            },
-            methods: {
-                async startRecording() {
-                    this.recording = true;
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-                    this.mediaRecorder.ondataavailable = event => this.audioChunks.push(event.data);
-                    this.mediaRecorder.start();
-
-                    this.sendAudioChunks();
-                },
-                stopRecording() {
-                    this.recording = false;
-                    if (this.mediaRecorder) {
-                        this.mediaRecorder.stop();
-                    }
-                },
-                async sendAudioChunks() {
-                    while (this.recording) {
-                        await new Promise(resolve => setTimeout(resolve, 15000));
-                        if (this.audioChunks.length > 0) {
-                            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                            this.audioChunks = [];
-                            this.uploadAudio(audioBlob);
-                        }
-                    }
-                },
-                async uploadAudio(blob) {
-                    const formData = new FormData();
-                    formData.append('file', blob, 'recording.webm');
-
-                    try {
-                        const response = await fetch('/transcribe', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        if (response.ok) {
-                            const data = await response.json();
-                            this.transcription = data.transcription;
-                        } else {
-                            console.error('Error:', response.status);
-                        }
-                    } catch (error) {
-                        console.error('Upload failed:', error);
+        let mediaRecorder;
+        let audioChunks = [];
+        let recording = false;
+        
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = async () => {
+                if (audioChunks.length > 0) {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    sendAudio(audioBlob);
+                    audioChunks = []; // Reset for next batch
+                    if (recording) {
+                        startRecording(); // Start new recording immediately
                     }
                 }
+            };
+            
+            mediaRecorder.start();
+            setTimeout(() => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, 15000); // Stop recording every 15 seconds
+        }
+        
+        async function sendAudio(blob) {
+            const formData = new FormData();
+            formData.append("audio", blob, "audio.webm");
+            
+            const response = await fetch("/transcribe", {
+                method: "POST",
+                body: formData
+            });
+            
+            const data = await response.json();
+            document.getElementById("transcription").textContent += data.transcription + " ";
+        }
+        
+        document.getElementById("start").addEventListener("click", () => {
+            recording = true;
+            startRecording();
+        });
+        
+        document.getElementById("stop").addEventListener("click", () => {
+            recording = false;
+            if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
             }
         });
     </script>
