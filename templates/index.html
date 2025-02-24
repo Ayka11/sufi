@@ -32,7 +32,7 @@
             color: white;
         }
         button:disabled {
-            background-color: #ccc;
+            background-color: #ccc !important;
             cursor: not-allowed;
         }
     </style>
@@ -50,6 +50,9 @@
         let transcriptions = [];
 
         document.getElementById("startRecording").addEventListener("click", async () => {
+            const startBtn = document.getElementById("startRecording");
+            const stopBtn = document.getElementById("stopRecording");
+            
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             
@@ -61,8 +64,10 @@
             };
 
             mediaRecorder.start();
-            document.getElementById("startRecording").disabled = true;
-            document.getElementById("stopRecording").disabled = false;
+            startBtn.disabled = true;
+            startBtn.style.backgroundColor = "#ccc";
+            stopBtn.disabled = false;
+            stopBtn.style.backgroundColor = "#dc3545";
             
             setInterval(() => {
                 if (mediaRecorder.state === "recording") {
@@ -73,9 +78,14 @@
         });
 
         document.getElementById("stopRecording").addEventListener("click", () => {
+            const startBtn = document.getElementById("startRecording");
+            const stopBtn = document.getElementById("stopRecording");
+            
             mediaRecorder.stop();
-            document.getElementById("startRecording").disabled = false;
-            document.getElementById("stopRecording").disabled = true;
+            startBtn.disabled = false;
+            startBtn.style.backgroundColor = "#28a745";
+            stopBtn.disabled = true;
+            stopBtn.style.backgroundColor = "#ccc";
         });
 
         function sendAudio() {
