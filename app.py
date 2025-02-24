@@ -8,6 +8,7 @@ app = Flask(__name__)
 
 SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
 SPEECH_REGION = "southeastasia"
+LANGUAGE = "az-AZ"  # Azerbaijani language
 
 def convert_webm_to_wav(webm_path):
     wav_path = webm_path.replace(".webm", ".wav")
@@ -17,6 +18,8 @@ def convert_webm_to_wav(webm_path):
 
 def transcribe_audio(file_path):
     speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
+    speech_config.speech_recognition_language = LANGUAGE  # Set Azerbaijani language
+
     audio_config = speechsdk.audio.AudioConfig(filename=file_path)
 
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
