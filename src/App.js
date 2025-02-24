@@ -12,11 +12,12 @@ const App = () => {
   const [language, setLanguage] = useState("en-US");
   const [, setSocket] = useState(null);  // New state to hold socket connection
   const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
+  const [isRecordingInterval, setIsRecordingInterval] = useState(false); // Track ongoing recording interval
 
   // Initialize socket connection on component mount
   useEffect(() => {
     const newSocket = io("https://transkripsiya-backend.azurewebsites.net/", {
-      transports: ["websocket"],  // Force WebSocket transport gg
+      transports: ["websocket"],  // Force WebSocket transport
     });
 
     setSocket(newSocket);
@@ -64,10 +65,6 @@ const App = () => {
           alert("An error occurred while accessing the microphone.");
         }
       });
-
-    // Load previous transcriptions from localStorage
-    const savedTranscriptions = JSON.parse(localStorage.getItem("transcriptions")) || [];
-    setTranscriptions(savedTranscriptions);
   }, []);
 
   // Wrap sendAudioToBackend in useCallback to prevent unnecessary re-creations
@@ -91,55 +88,58 @@ const App = () => {
         };
 
         // Save only the latest transcription
-        const updatedTranscriptions = [newEntry]; // Overwrite with the latest transcription
-        setTranscriptions(updatedTranscriptions);
-        localStorage.setItem("transcriptions", JSON.stringify(updatedTranscriptions));
+        setTranscriptions((prev) => {
+          // Add new entry but keep previous ones
+          const updatedTranscriptions = [...prev, newEntry];
+          return updatedTranscriptions;
+        });
       })
       .catch((err) => console.error("Error:", err));
   }, [service, language]);
 
-  // Handle silence detection to automatically send audio to backend after a pause
-  const detectSilence = useCallback(() => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    // Set a new timeout for 2 seconds of silence
-    const id = setTimeout(() => {
-      if (audioChunks.length > 0) {
-        const audioBlob = new Blob(audioChunks, { type: "audio/ogg" });
-        sendAudioToBackend(audioBlob); // Send audio after silence
-        setAudioChunks([]); // Clear audio chunks after sending
-      }
-    }, 2000); // Adjust silence timeout as needed
-    setTimeoutId(id);
-  }, [audioChunks, timeoutId, sendAudioToBackend]);
-
-  // Monitor audio data availability and silence detection
-  useEffect(() => {
-    if (audioChunks.length > 0) {
-      detectSilence();
-    }
-  }, [audioChunks, detectSilence]);
-
-  // Start recording audio
+  // Function to start the recording in 20-second intervals
   const startRecording = () => {
-    setAudioChunks([]); // Reset audio chunks before starting
-    mediaRecorder?.start();
     setIsRecording(true);
-    console.log("Recording started...");
+    setIsRecordingInterval(true);
+    setAudioChunks([]); // Reset audio chunks
+
+    // Start the first recording immediately
+    recordAudio();
   };
 
-  // Stop recording audio
-  const stopRecording = () => {
-    mediaRecorder?.stop();
-    setIsRecording(false);
-    console.log("Recording stopped...");
+  // Function to record audio every 20 seconds
+  const recordAudio = () => {
+    if (!mediaRecorder) return;
 
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
-      sendAudioToBackend(audioBlob);
-    };
+    mediaRecorder.start();
+    console.log("Recording started...");
+
+    // Stop recording after 20 seconds and send the audio
+    setTimeout(() => {
+      mediaRecorder.stop(); // Stop recording after 20 seconds
+      console.log("Recording stopped...");
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/ogg" }); // Using OGG format as output
+        sendAudioToBackend(audioBlob);
+        setAudioChunks([]); // Clear the audio chunks after sending
+      };
+
+      // If still recording, start the next recording after 20 seconds
+      if (isRecordingInterval) {
+        setTimeout(() => {
+          recordAudio(); // Start the next recording after a delay of 20 seconds
+        }, 0);
+      }
+    }, 20000); // Adjust the time to 20 seconds for each recording
+  };
+
+  // Stop recording and transcription
+  const stopRecording = () => {
+    setIsRecording(false);
+    setIsRecordingInterval(false); // Stop ongoing interval recordings
+    mediaRecorder?.stop();
+    console.log("Recording stopped...");
   };
 
   // Download the latest transcription log
@@ -187,7 +187,7 @@ const App = () => {
         <h2>Latest Transcription:</h2>
         {transcriptions.length > 0 && (
           <div>
-            <strong>{transcriptions[0].timestamp}</strong>: {transcriptions[0].text}
+            <strong>{transcriptions[transcriptions.length - 1].timestamp}</strong>: {transcriptions[transcriptions.length - 1].text}
           </div>
         )}
       </div>
