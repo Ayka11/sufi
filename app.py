@@ -1,9 +1,8 @@
-import os
 import eventlet
 eventlet.monkey_patch()  # Add this at the very beginning
 
-import requests
-import eventlet.green.requests as grequests
+import os
+import requests  # Use the regular requests library
 from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
@@ -19,7 +18,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Flask-SocketIO initialization with eventlet
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*", ping_timeout=60, ping_interval=30)
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")  # Use eventlet for async WebSocket support
 
 # Azure Speech API setup
 AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
@@ -103,12 +102,6 @@ def upload_audio():
         except Exception as e:
             app.logger.error(f"Socket emission error: {str(e)}")
         
-        # Clean up temporary files
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        if os.path.exists(wav_file_path):
-            os.remove(wav_file_path)
-
         return jsonify({"transcription": transcription_text})
 
     except Exception as e:
@@ -154,7 +147,7 @@ def transcribe_with_google(file_path, language):
         }
     }
 
-    response = grequests.post(GOOGLE_SPEECH_URL, json=request_data)
+    response = requests.post(GOOGLE_SPEECH_URL, json=request_data)
     result = response.json()
 
     if "results" in result:
