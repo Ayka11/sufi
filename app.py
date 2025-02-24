@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import os
 import tempfile
 import azure.cognitiveservices.speech as speechsdk
@@ -6,8 +6,8 @@ from pydub import AudioSegment
 
 app = Flask(__name__)
 
-SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
-SPEECH_REGION = "southeastasia"
+SPEECH_KEY = "your-azure-speech-key"
+SPEECH_REGION = "your-azure-region"
 
 def convert_webm_to_wav(webm_path):
     wav_path = webm_path.replace(".webm", ".wav")
@@ -28,6 +28,10 @@ def transcribe_audio(file_path):
         return "No speech recognized"
     elif result.reason == speechsdk.ResultReason.Canceled:
         return f"Recognition canceled: {result.cancellation_details.reason}"
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
