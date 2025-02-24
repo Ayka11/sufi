@@ -4,12 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Transcription</title>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        button {
+            font-size: 16px;
+            padding: 10px 15px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #startRecording {
+            background-color: #28a745;
+            color: white;
+        }
+        #stopRecording {
+            background-color: #dc3545;
+            color: white;
+        }
+        #downloadTranscription {
+            background-color: #007bff;
+            color: white;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
     <h1>Live Transcription</h1>
-    <button id="startRecording">Start Recording</button>
-    <button id="stopRecording" disabled>Stop Recording</button>
-    <button id="downloadTranscription">Download Transcription</button>
+    <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
+    <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
+    <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
     <ul id="transcriptionList"></ul>
 
     <script>
