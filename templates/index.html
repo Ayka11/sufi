@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Transcription</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+        select { padding: 5px; }
+        #transcription { font-size: 18px; color: blue; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Real-time Speech Transcription</h1>
+    
+    <label for="service">Select Service:</label>
+    <select id="service">
+        <option value="azure">Azure</option>
+        <option value="google">Google</option>
+    </select>
+
+    <button onclick="startTranscription()">Start</button>
+    <button onclick="stopTranscription()">Stop</button>
+
+    <p id="transcription">Transcription will appear here...</p>
+
+    <script>
+        const socket = io.connect('http://localhost:5000');
+        let mediaRecorder;
+        let audioChunks = [];
+
+        socket.on('transcription', function(data) {
+            document.getElementById('transcription').innerText = data.transcription;
+        });
+
+        async function startTranscription() {
+            const service = document.getElementById("service").value;
+            fetch('/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ service: service, language: "en-US" })
+            });
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    let reader = new FileReader();
+                    reader.readAsDataURL(event.data);
+                    reader.onloadend = function() {
+                        let base64data = reader.result.split(',')[1];
+                        socket.emit('audio_data', { audio_data: base64data, language: "en-US" });
+                    }
+                }
+            };
+
+            mediaRecorder.start(1000);
+        }
+
+        function stopTranscription() {
+            fetch('/stop', { method: 'POST' });
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+            }
+        }
+    </script>
+</body>
+</html>
