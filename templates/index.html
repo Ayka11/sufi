@@ -76,34 +76,37 @@
             
             mediaRecorder.ondataavailable = async (event) => {
                 if (event.data.size > 0 && isRecording) {
-                    audioChunks.push(event.data);
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    audioChunks = [];
-                    sendAudio(audioBlob);
+                    sendAudio(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = () => {
+                if (isRecording) {
+                    mediaRecorder.start();
+                    setTimeout(() => mediaRecorder.stop(), 5000);
                 }
             };
             
             mediaRecorder.start();
-            setInterval(() => {
-                if (isRecording) {
-                    mediaRecorder.stop();
-                    mediaRecorder.start();
-                }
-            }, 5000);
+            setTimeout(() => mediaRecorder.stop(), 5000);
         }
 
         async function sendAudio(audioBlob) {
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.wav");
             
-            await fetch('/record', {
-                method: 'POST',
-                body: formData
-            }).then(response => {
+            try {
+                const response = await fetch('/record', {
+                    method: 'POST',
+                    body: formData
+                });
+
                 if (!response.ok) {
                     console.error("Failed to send audio");
                 }
-            }).catch(err => console.error(err));
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         function stopTranscription() {
