@@ -58,31 +58,57 @@
     <script>
         const socket = io.connect();
         let isRecording = false;
-        let intervalID;
+        let mediaRecorder;
+        let audioChunks = [];
 
         socket.on('transcription', function(data) {
             document.getElementById('transcription').innerText += '\n' + data.transcription;
         });
 
-        function recordAndSend() {
-            if (!isRecording) return;
-            fetch('/record', { method: 'POST' })
-                .then(response => response.ok ? console.log("Audio recorded and sent") : console.error("Recording failed"))
-                .catch(err => console.error(err));
-        }
-
-        function startTranscription() {
+        async function startTranscription() {
             isRecording = true;
             document.getElementById('startButton').disabled = true;
             document.getElementById('stopButton').disabled = false;
             document.getElementById('notification').innerText = 'Transcription started.';
-            intervalID = setInterval(recordAndSend, 15000);
-            recordAndSend();
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = async (event) => {
+                if (event.data.size > 0 && isRecording) {
+                    audioChunks.push(event.data);
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioChunks = [];
+                    sendAudio(audioBlob);
+                }
+            };
+            
+            mediaRecorder.start();
+            setInterval(() => {
+                if (isRecording) {
+                    mediaRecorder.stop();
+                    mediaRecorder.start();
+                }
+            }, 5000);
+        }
+
+        async function sendAudio(audioBlob) {
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "audio.wav");
+            
+            await fetch('/record', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (!response.ok) {
+                    console.error("Failed to send audio");
+                }
+            }).catch(err => console.error(err));
         }
 
         function stopTranscription() {
             isRecording = false;
-            clearInterval(intervalID);
+            mediaRecorder.stop();
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             document.getElementById('notification').innerText = 'Transcription stopped.';
