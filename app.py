@@ -6,8 +6,8 @@ from pydub import AudioSegment
 
 app = Flask(__name__)
 
-SPEECH_KEY = "your-azure-speech-key"
-SPEECH_REGION = "your-azure-region"
+SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
+SPEECH_REGION = "southeastasia"
 
 def convert_webm_to_wav(webm_path):
     wav_path = webm_path.replace(".webm", ".wav")
