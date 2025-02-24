@@ -11,7 +11,7 @@ const App = () => {
   const [service, setService] = useState("azure");
   const [language, setLanguage] = useState("en-US");
   const [, setSocket] = useState(null);  // New state to hold socket connection
-  const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
+  //const [timeoutId, setTimeoutId] = useState(null);  // For silence detection
   const [isRecordingInterval, setIsRecordingInterval] = useState(false); // Track ongoing recording interval
 
   // Initialize socket connection on component mount
