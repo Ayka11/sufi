@@ -3,136 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Transcription</title>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <title>Real-Time Transcription</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
+            background-color: #f4f7f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #333;
         }
+        h1 { color: #4CAF50; }
+        #transcription { font-size: 18px; color: #555; margin-top: 20px; text-align: center; word-wrap: break-word; }
         button {
-            font-size: 16px;
-            padding: 10px 15px;
-            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
+            border-radius: 50px;
+            margin: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease, transform 0.1s ease;
         }
-        #startRecording {
-            background-color: #28a745;
-            color: white;
-        }
-        #stopRecording {
-            background-color: #dc3545;
-            color: white;
-        }
-        #downloadTranscription {
-            background-color: #007bff;
-            color: white;
-        }
-        button:disabled {
-            background-color: #ccc !important;
-            cursor: not-allowed;
-        }
+        button:hover { background-color: #45a049; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .highlighted { background-color: #ff9800; }
+        .notification { margin-top: 10px; font-size: 16px; color: #007BFF; }
+        select { padding: 10px; font-size: 16px; border-radius: 5px; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <h1>Live Transcription</h1>
-    <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
-    <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
-    <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
-    <ul id="transcriptionList"></ul>
-
+    <h1>Real-Time Transcription</h1>
+    <div id="transcription"></div>
+    <select id="languageSelect">
+        <option value="en-US">English</option>
+        <option value="az-AZ">Azerbaijani</option>
+        <option value="fr-FR">French</option>
+        <option value="es-ES">Spanish</option>
+    </select>
+    <div>
+        <button id="startButton" onclick="startTranscription()">Start Recording</button>
+        <button id="stopButton" onclick="stopTranscription()" disabled>Stop Transcription</button>
+    </div>
+    <div id="notification" class="notification"></div>
     <script>
+        const socket = io.connect();
+        let isRecording = false;
         let mediaRecorder;
         let audioChunks = [];
-        let transcriptions = [];
 
-        document.getElementById("startRecording").addEventListener("click", async () => {
-            const startBtn = document.getElementById("startRecording");
-            const stopBtn = document.getElementById("stopRecording");
+        socket.on('transcription', function(data) {
+            document.getElementById('transcription').innerText += '\n' + data.transcription;
+        });
+
+        async function startTranscription() {
+            isRecording = true;
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+            document.getElementById('notification').innerText = 'Transcription started.';
             
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
             
-            mediaRecorder.ondataavailable = (event) => {
-                audioChunks.push(event.data);
-                if (mediaRecorder.state === "inactive") {
-                    sendAudio();
+            mediaRecorder.ondataavailable = async (event) => {
+                if (event.data.size > 0 && isRecording) {
+                    audioChunks.push(event.data);
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioChunks = [];
+                    sendAudio(audioBlob);
                 }
             };
-
-            mediaRecorder.start();
-            startBtn.disabled = true;
-            startBtn.style.backgroundColor = "#ccc";
-            stopBtn.disabled = false;
-            stopBtn.style.backgroundColor = "#dc3545";
             
+            mediaRecorder.start();
             setInterval(() => {
-                if (mediaRecorder.state === "recording") {
+                if (isRecording) {
                     mediaRecorder.stop();
                     mediaRecorder.start();
                 }
-            }, 15000);
-        });
+            }, 5000);
+        }
 
-        document.getElementById("stopRecording").addEventListener("click", () => {
-            const startBtn = document.getElementById("startRecording");
-            const stopBtn = document.getElementById("stopRecording");
-            
-            mediaRecorder.stop();
-            startBtn.disabled = false;
-            startBtn.style.backgroundColor = "#28a745";
-            stopBtn.disabled = true;
-            stopBtn.style.backgroundColor = "#ccc";
-        });
-
-        function sendAudio() {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            audioChunks = [];
+        async function sendAudio(audioBlob) {
             const formData = new FormData();
-            formData.append("audio", audioBlob, "audio.webm");
-
-            fetch("/transcribe", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.transcription) {
-                        const timestamp = new Date().toLocaleTimeString();
-                        transcriptions.push(`${timestamp}: ${data.transcription}`);
-                        updateTranscriptionList();
-                        localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
-                    }
-                })
-                .catch(error => console.error("Error:", error));
+            formData.append("audio", audioBlob, "audio.wav");
+            
+            await fetch('/record', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (!response.ok) {
+                    console.error("Failed to send audio");
+                }
+            }).catch(err => console.error(err));
         }
 
-        function updateTranscriptionList() {
-            const list = document.getElementById("transcriptionList");
-            list.innerHTML = "";
-            transcriptions.forEach(text => {
-                const li = document.createElement("li");
-                li.textContent = text;
-                list.appendChild(li);
-            });
+        function stopTranscription() {
+            isRecording = false;
+            mediaRecorder.stop();
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('notification').innerText = 'Transcription stopped.';
         }
-
-        document.getElementById("downloadTranscription").addEventListener("click", () => {
-            const textContent = transcriptions.join("\n");
-            const blob = new Blob([textContent], { type: "text/plain" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "transcription.txt";
-            a.click();
-        });
-
-        window.onload = function() {
-            const savedTranscriptions = localStorage.getItem("transcriptions");
-            if (savedTranscriptions) {
-                transcriptions = JSON.parse(savedTranscriptions);
-                updateTranscriptionList();
-            }
-        };
     </script>
 </body>
 </html>
