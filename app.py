@@ -19,9 +19,10 @@ def convert_webm_to_wav(webm_path):
         print(f"❌ Error converting WebM to WAV: {e}")
         return None  # Return None if conversion fails
 
-def transcribe_audio(file_path):
+def transcribe_audio(file_path, language="en-US"):
     try:
         speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
+        speech_config.speech_recognition_language = language  # Set the language dynamically
         audio_config = speechsdk.audio.AudioConfig(filename=file_path)
 
         speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
@@ -35,11 +36,7 @@ def transcribe_audio(file_path):
             return f"Recognition canceled: {result.cancellation_details.reason}"
     except Exception as e:
         print(f"❌ Transcription error: {e}")
-        return None  # Return None if API call fails
-
-@app.route("/")
-def index():
-    return render_template("index.html")
+        return None
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
@@ -47,6 +44,7 @@ def transcribe():
         return jsonify({"error": "No audio file provided"}), 400
 
     audio_file = request.files["audio"]
+    language = request.form.get("language", "en-US")  # Get language, default to English
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
         audio_file.save(temp_audio.name)
@@ -56,7 +54,7 @@ def transcribe():
     if not wav_path:
         return jsonify({"error": "Failed to convert audio"}), 500
 
-    transcription = transcribe_audio(wav_path)
+    transcription = transcribe_audio(wav_path, language)
     if transcription is None:
         return jsonify({"error": "Transcription failed"}), 500
 
