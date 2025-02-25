@@ -56,10 +56,25 @@
       .transcription-item:last-child {
         border-bottom: none;
       }
+      select {
+        padding: 8px;
+        font-size: 16px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+      }
     </style>
   </head>
   <body>
     <h1>Live Transcription</h1>
+
+    <!-- Language Selection Dropdown -->
+    <label for="languageSelect">Choose Language:</label>
+    <select id="languageSelect">
+      <option value="en-US">English</option>
+      <option value="az-AZ">Azerbaijani</option>
+    </select>
+
     <div class="buttons">
       <button id="startRecording">
         <i class="fas fa-microphone"></i> Start Recording
@@ -100,7 +115,7 @@
               mediaRecorder.stop();
               mediaRecorder.start(); // Restart recording to continuously capture chunks
             }
-          }, 15000); // Adjust interval to send data every 5 seconds
+          }, 15000); // Adjust interval to send data every 15 seconds
         });
 
       document.getElementById("stopRecording").addEventListener("click", () => {
@@ -115,6 +130,10 @@
         audioChunks = [];
         const formData = new FormData();
         formData.append("audio", audioBlob, "audio.webm");
+
+        // Get selected language
+        const selectedLanguage = document.getElementById("languageSelect").value;
+        formData.append("language", selectedLanguage);
 
         try {
           const response = await fetch("/transcribe", {
