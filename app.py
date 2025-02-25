@@ -32,13 +32,12 @@ def transcribe_audio(file_path):
 @app.route("/")
 def index():
     return render_template("index.html")
-    
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
 
-    language = request.form.get("language", "en-US")  # Default to English if no language is selected
     audio_file = request.files["audio"]
     
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
@@ -47,7 +46,7 @@ def transcribe():
 
     try:
         wav_path = convert_webm_to_wav(webm_path)
-        transcription = transcribe_audio(wav_path, language)
+        transcription = transcribe_audio(wav_path)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -56,3 +55,6 @@ def transcribe():
             os.remove(wav_path)
 
     return jsonify({"transcription": transcription})
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
