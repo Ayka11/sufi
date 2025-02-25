@@ -58,7 +58,6 @@
 <body>
     <h1>Live Transcription</h1>
 
-    <!-- Dropdowns for Language & Recognizer Selection -->
     <div class="controls">
         <label for="language">Select Language:</label>
         <select id="language">
@@ -73,49 +72,52 @@
         </select>
     </div>
 
-    <!-- Buttons for Recording & Download -->
     <div class="controls">
         <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
         <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
         <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
     </div>
 
-    <!-- Transcription Display -->
     <div class="transcription-container" id="transcriptionList"></div>
 
     <script>
         let mediaRecorder;
         let audioChunks = [];
         let transcriptions = [];
+        let intervalId;
 
         document.getElementById("startRecording").addEventListener("click", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-
+            
             mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
-                if (mediaRecorder.state === "inactive") {
-                    sendAudio();
-                }
             };
 
             mediaRecorder.start();
             document.getElementById("startRecording").disabled = true;
             document.getElementById("stopRecording").disabled = false;
 
-            setInterval(() => {
+            intervalId = setInterval(() => {
                 if (mediaRecorder.state === "recording") {
                     mediaRecorder.stop();
                     mediaRecorder.start();
                 }
-            }, 15000);
+            }, 5000);
         });
 
         document.getElementById("stopRecording").addEventListener("click", () => {
+            clearInterval(intervalId);
             mediaRecorder.stop();
             document.getElementById("startRecording").disabled = false;
             document.getElementById("stopRecording").disabled = true;
         });
+
+        mediaRecorder.onstop = async () => {
+            if (audioChunks.length > 0) {
+                await sendAudio();
+            }
+        };
 
         async function sendAudio() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -124,10 +126,8 @@
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.webm");
 
-            // Get selected language and recognizer
             const language = document.getElementById("language").value;
             const recognizer = document.getElementById("recognizer").value;
-
             formData.append("language", language);
             formData.append("recognizer", recognizer);
 
@@ -144,7 +144,6 @@
                 }
             } catch (error) {
                 console.error("Error:", error);
-                alert("Failed to transcribe audio. Please try again.");
             }
         }
 
