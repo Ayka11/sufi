@@ -16,19 +16,18 @@
             color: #333;
         }
         .controls {
-            margin: 20px 0;
+            margin-bottom: 20px;
         }
         select, button {
-            font-size: 16px;
             padding: 10px;
+            font-size: 16px;
             margin: 5px;
             border-radius: 5px;
-            border: 1px solid #ccc;
+            cursor: pointer;
         }
         button {
             background-color: #007bff;
             color: white;
-            cursor: pointer;
             border: none;
             display: flex;
             align-items: center;
@@ -58,21 +57,30 @@
 </head>
 <body>
     <h1>Live Transcription</h1>
-    
+
+    <!-- Dropdowns for Language & Recognizer Selection -->
     <div class="controls">
-        <label for="languageSelect">Select Language: </label>
-        <select id="languageSelect">
+        <label for="language">Select Language:</label>
+        <select id="language">
             <option value="en-US">English</option>
             <option value="az-AZ">Azerbaijani</option>
         </select>
+
+        <label for="recognizer">Select Recognizer:</label>
+        <select id="recognizer">
+            <option value="azure">Azure</option>
+            <option value="google">Google</option>
+        </select>
     </div>
 
-    <div class="buttons">
+    <!-- Buttons for Recording & Download -->
+    <div class="controls">
         <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
         <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
         <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
     </div>
 
+    <!-- Transcription Display -->
     <div class="transcription-container" id="transcriptionList"></div>
 
     <script>
@@ -83,7 +91,7 @@
         document.getElementById("startRecording").addEventListener("click", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            
+
             mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
                 if (mediaRecorder.state === "inactive") {
@@ -94,7 +102,7 @@
             mediaRecorder.start();
             document.getElementById("startRecording").disabled = true;
             document.getElementById("stopRecording").disabled = false;
-            
+
             setInterval(() => {
                 if (mediaRecorder.state === "recording") {
                     mediaRecorder.stop();
@@ -112,17 +120,21 @@
         async function sendAudio() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             audioChunks = [];
+
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.webm");
 
-            const language = document.getElementById("languageSelect").value;
-            formData.append("language", language);  // Send selected language
+            // Get selected language and recognizer
+            const language = document.getElementById("language").value;
+            const recognizer = document.getElementById("recognizer").value;
+
+            formData.append("language", language);
+            formData.append("recognizer", recognizer);
 
             try {
                 const response = await fetch("/transcribe", { method: "POST", body: formData });
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Server error: ${response.status} ${response.statusText}`);
+
                 const data = await response.json();
                 if (data.transcription) {
                     const timestamp = new Date().toLocaleTimeString();
