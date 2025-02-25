@@ -15,18 +15,21 @@
         h1 {
             color: #333;
         }
-        .buttons {
+        .controls {
             margin: 20px 0;
+        }
+        select, button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
         }
         button {
             background-color: #007bff;
             color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
             cursor: pointer;
-            border-radius: 5px;
-            margin: 5px;
+            border: none;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -55,11 +58,21 @@
 </head>
 <body>
     <h1>Live Transcription</h1>
+    
+    <div class="controls">
+        <label for="languageSelect">Select Language: </label>
+        <select id="languageSelect">
+            <option value="en-US">English</option>
+            <option value="az-AZ">Azerbaijani</option>
+        </select>
+    </div>
+
     <div class="buttons">
         <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
         <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
         <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
     </div>
+
     <div class="transcription-container" id="transcriptionList"></div>
 
     <script>
@@ -101,6 +114,9 @@
             audioChunks = [];
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.webm");
+
+            const language = document.getElementById("languageSelect").value;
+            formData.append("language", language);  // Send selected language
 
             try {
                 const response = await fetch("/transcribe", { method: "POST", body: formData });
