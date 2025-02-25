@@ -96,23 +96,28 @@
             document.getElementById("stopRecording").disabled = true;
         });
 
-        function sendAudio() {
+        async function sendAudio() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             audioChunks = [];
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.webm");
 
-            fetch("/transcribe", { method: "POST", body: formData })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.transcription) {
-                        const timestamp = new Date().toLocaleTimeString();
-                        transcriptions.unshift(`${timestamp}: ${data.transcription}`);
-                        updateTranscriptionList();
-                        localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
-                    }
-                })
-                .catch(error => console.error("Error:", error));
+            try {
+                const response = await fetch("/transcribe", { method: "POST", body: formData });
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+                const data = await response.json();
+                if (data.transcription) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    transcriptions.unshift(`${timestamp}: ${data.transcription}`);
+                    updateTranscriptionList();
+                    localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Failed to transcribe audio. Please try again.");
+            }
         }
 
         function updateTranscriptionList() {
