@@ -4,63 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Transcription</title>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        .buttons {
-            margin: 20px 0;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin: 5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .transcription-container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: left;
-        }
-        .transcription-item {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        .transcription-item:last-child {
-            border-bottom: none;
-        }
-    </style>
 </head>
 <body>
     <h1>Live Transcription</h1>
-    <div class="buttons">
-        <button id="startRecording"><i class="fas fa-microphone"></i> Start Recording</button>
-        <button id="stopRecording" disabled><i class="fas fa-stop"></i> Stop Recording</button>
-        <button id="downloadTranscription"><i class="fas fa-download"></i> Download Transcription</button>
-    </div>
-    <div class="transcription-container" id="transcriptionList"></div>
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <button id="downloadTranscription">Download Transcription</button>
+    <ul id="transcriptionList"></ul>
 
     <script>
         let mediaRecorder;
@@ -96,38 +46,32 @@
             document.getElementById("stopRecording").disabled = true;
         });
 
-        async function sendAudio() {
+        function sendAudio() {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             audioChunks = [];
             const formData = new FormData();
             formData.append("audio", audioBlob, "audio.webm");
 
-            try {
-                const response = await fetch("/transcribe", { method: "POST", body: formData });
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
-                }
-                const data = await response.json();
-                if (data.transcription) {
-                    const timestamp = new Date().toLocaleTimeString();
-                    transcriptions.unshift(`${timestamp}: ${data.transcription}`);
-                    updateTranscriptionList();
-                    localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
-                }
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Failed to transcribe audio. Please try again.");
-            }
+            fetch("/transcribe", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.transcription) {
+                        const timestamp = new Date().toLocaleTimeString();
+                        transcriptions.push(`${timestamp}: ${data.transcription}`);
+                        updateTranscriptionList();
+                        localStorage.setItem("transcriptions", JSON.stringify(transcriptions));
+                    }
+                })
+                .catch(error => console.error("Error:", error));
         }
 
         function updateTranscriptionList() {
-            const container = document.getElementById("transcriptionList");
-            container.innerHTML = "";
+            const list = document.getElementById("transcriptionList");
+            list.innerHTML = "";
             transcriptions.forEach(text => {
-                const div = document.createElement("div");
-                div.className = "transcription-item";
-                div.textContent = text;
-                container.appendChild(div);
+                const li = document.createElement("li");
+                li.textContent = text;
+                list.appendChild(li);
             });
         }
 
