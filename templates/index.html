@@ -84,42 +84,35 @@
         let mediaRecorder;
         let audioChunks = [];
         let transcriptions = [];
-        let intervalId;
+        let isRecording = false;
 
         document.getElementById("startRecording").addEventListener("click", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-            
+
             mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
+                sendAudio();
             };
 
-            mediaRecorder.start();
+            mediaRecorder.start(5000);
+            isRecording = true;
+
             document.getElementById("startRecording").disabled = true;
             document.getElementById("stopRecording").disabled = false;
-
-            intervalId = setInterval(() => {
-                if (mediaRecorder.state === "recording") {
-                    mediaRecorder.stop();
-                    mediaRecorder.start();
-                }
-            }, 5000);
         });
 
         document.getElementById("stopRecording").addEventListener("click", () => {
-            clearInterval(intervalId);
-            mediaRecorder.stop();
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+            }
             document.getElementById("startRecording").disabled = false;
             document.getElementById("stopRecording").disabled = true;
         });
 
-        mediaRecorder.onstop = async () => {
-            if (audioChunks.length > 0) {
-                await sendAudio();
-            }
-        };
-
         async function sendAudio() {
+            if (audioChunks.length === 0) return;
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             audioChunks = [];
 
