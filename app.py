@@ -2,33 +2,33 @@ from flask import Flask, render_template, request, jsonify
 import os
 import tempfile
 import azure.cognitiveservices.speech as speechsdk
+from pydub import AudioSegment
 import requests
 import json
-from pydub import AudioSegment
 
 app = Flask(__name__)
 
-# Azure Speech API Credentials
-AZURE_SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
-AZURE_SPEECH_REGION = "southeastasia"
+# Azure Speech Config
+SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
+SPEECH_REGION = "southeastasia"
 
-# Google Cloud Speech-to-Text API Key
+# Google Speech API Key
 GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
-GOOGLE_SPEECH_API_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}"
+GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1/speech:recognize?key={GOOGLE_API_KEY}"
 
-def convert_webm_to_wav(webm_path):
-    """Convert .webm to .wav"""
-    wav_path = webm_path.replace(".webm", ".wav")
-    audio = AudioSegment.from_file(webm_path, format="webm")
-    audio.export(wav_path, format="wav")
-    return wav_path
+def convert_audio(input_path, output_format="wav"):
+    """ Converts audio to the desired format """
+    output_path = input_path.rsplit(".", 1)[0] + f".{output_format}"
+    audio = AudioSegment.from_file(input_path)
+    audio.export(output_path, format=output_format)
+    return output_path
 
 def transcribe_with_azure(file_path, language):
-    """Transcribe audio using Azure Speech-to-Text"""
-    speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
+    """ Transcribe using Azure Speech-to-Text """
+    speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
     speech_config.speech_recognition_language = language
-    audio_config = speechsdk.audio.AudioConfig(filename=file_path)
 
+    audio_config = speechsdk.audio.AudioConfig(filename=file_path)
     speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
     result = speech_recognizer.recognize_once()
 
@@ -40,13 +40,14 @@ def transcribe_with_azure(file_path, language):
         return f"Recognition canceled: {result.cancellation_details.reason}"
 
 def transcribe_with_google(file_path, language):
-    """Transcribe audio using Google Speech-to-Text"""
-    with open(file_path, "rb") as audio_file:
+    """ Transcribe using Google Speech-to-Text """
+    flac_path = convert_audio(file_path, "flac")  # Google requires FLAC or LINEAR16
+    with open(flac_path, "rb") as audio_file:
         audio_content = audio_file.read()
 
-    request_data = {
+    payload = {
         "config": {
-            "encoding": "LINEAR16",
+            "encoding": "FLAC",
             "sampleRateHertz": 16000,
             "languageCode": language
         },
@@ -55,12 +56,18 @@ def transcribe_with_google(file_path, language):
         }
     }
 
-    response = requests.post(GOOGLE_SPEECH_API_URL, json=request_data)
-    result = response.json()
+    response = requests.post(GOOGLE_SPEECH_URL, json=payload)
+    
+    os.remove(flac_path)  # Clean up converted file
 
-    if "results" in result:
-        return " ".join([alt["transcript"] for res in result["results"] for alt in res["alternatives"]])
-    return "No speech recognized"
+    if response.status_code == 200:
+        result = response.json()
+        if "results" in result:
+            return " ".join([alt["transcript"] for res in result["results"] for alt in res["alternatives"]])
+        else:
+            return "No speech recognized"
+    else:
+        return f"Google API error: {response.text}"
 
 @app.route("/")
 def index():
@@ -68,32 +75,29 @@ def index():
 
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
-    """Handle audio transcription with selected service"""
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
 
-    language = request.form.get("language", "en-US")
-    recognizer = request.form.get("recognizer", "azure")  # Default to Azure
     audio_file = request.files["audio"]
+    language = request.form.get("language", "en-US")
+    recognizer = request.form.get("recognizer", "azure")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
         audio_file.save(temp_audio.name)
         webm_path = temp_audio.name
 
     try:
-        wav_path = convert_webm_to_wav(webm_path)
-
+        wav_path = convert_audio(webm_path, "wav")
         if recognizer == "azure":
             transcription = transcribe_with_azure(wav_path, language)
         elif recognizer == "google":
             transcription = transcribe_with_google(wav_path, language)
         else:
-            return jsonify({"error": "Invalid recognizer selected"}), 400
-
+            return jsonify({"error": "Invalid recognizer"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
-        os.remove(webm_path)  # Cleanup
+        os.remove(webm_path)
         if os.path.exists(wav_path):
             os.remove(wav_path)
 
