@@ -27,7 +27,7 @@ def convert_webm_to_wav(webm_path):
         print(f"❌ Error converting WebM to WAV: {e}")
         return None  # Return None if conversion fails
 
-def transcribe_audio_azure(file_path, language="en-US"):
+def transcribe_audio_azure(file_path, language):
     """Transcribe audio using Azure Speech-to-Text with a specified language."""
     try:
         speech_config = speechsdk.SpeechConfig(subscription=SPEECH_KEY, region=SPEECH_REGION)
@@ -48,7 +48,7 @@ def transcribe_audio_azure(file_path, language="en-US"):
         print(f"❌ Azure Transcription error: {e}")
         return None  # Return None if API call fails
 
-def transcribe_audio_google(file_path):
+def transcribe_audio_google(file_path,language):
     """Transcribe audio using Google Speech-to-Text."""
     try:
         with open(file_path, 'rb') as audio_file:
@@ -62,7 +62,7 @@ def transcribe_audio_google(file_path):
             "config": {
                 "encoding": "LINEAR16",  # Assuming the audio is in the WAV format, which uses LINEAR16 encoding
                 "sampleRateHertz": 16000,
-                "languageCode": "en-US"  # You can change this to select the language
+                "languageCode": language  # You can change this to select the language
             },
             "audio": {
                 "content": audio_content.decode('base64')  # Base64 encode the audio content
@@ -96,7 +96,7 @@ def transcribe():
         return jsonify({"error": "No audio file provided"}), 400
 
     audio_file = request.files["audio"]
-    language = request.form.get("language", "en-US")  # Get language, default to English
+    language = request.form.get("language")  # Get language, default to English
     recognizer_model = request.form.get("recognizerModel", "azure")  # Get selected recognizer model
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
@@ -109,9 +109,9 @@ def transcribe():
 
     # Choose transcription model based on user selection
     if recognizer_model == "google":
-        transcription = transcribe_audio_google(wav_path)
+        transcription = transcribe_audio_google(wav_path,language)
     else:
-        transcription = transcribe_audio_azure(wav_path)
+        transcription = transcribe_audio_azure(wav_path,language)
 
     if transcription is None:
         return jsonify({"error": "Transcription failed"}), 500
