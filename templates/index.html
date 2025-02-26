@@ -4,12 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live Transcription</title>
-
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
-
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -75,6 +73,13 @@
       <option value="az-AZ">Azerbaijani</option>
     </select>
 
+    <!-- Recognizer Model Selection Dropdown -->
+    <label for="recognizerSelect">Choose Recognizer:</label>
+    <select id="recognizerSelect">
+      <option value="azure">Azure</option>
+      <option value="google">Google</option>
+    </select>
+
     <div class="buttons">
       <button id="startRecording">
         <i class="fas fa-microphone"></i> Start Recording
@@ -131,9 +136,11 @@
         const formData = new FormData();
         formData.append("audio", audioBlob, "audio.webm");
 
-        // Get selected language
+        // Get selected language and recognizer model
         const selectedLanguage = document.getElementById("languageSelect").value;
+        const selectedRecognizer = document.getElementById("recognizerSelect").value;
         formData.append("language", selectedLanguage);
+        formData.append("recognizerModel", selectedRecognizer);
 
         try {
           const response = await fetch("/transcribe", {
