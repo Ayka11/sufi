@@ -6,6 +6,7 @@ from pydub import AudioSegment
 import requests
 import json
 import io
+import base64
 
 app = Flask(__name__)
 
