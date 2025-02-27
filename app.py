@@ -48,41 +48,28 @@ def transcribe_audio_azure(file_path, language):
         print(f"❌ Azure Transcription error: {e}")
         return None  # Return None if API call fails
 
-import requests
-import base64
-import wave
-
-GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1/speech:recognize?key=YOUR_API_KEY"
-
 def transcribe_audio_google(file_path, language):
-    """Transcribe a WAV file using Google Speech-to-Text."""
+    """Transcribe any WAV file (auto-fixes format) using Google Speech-to-Text."""
     try:
-        # Open WAV file to verify format and sample rate
-        with wave.open(file_path, "rb") as wav_file:
-            sample_width = wav_file.getsampwidth()
-            sample_rate = wav_file.getframerate()
-            channels = wav_file.getnchannels()
+        # Load the WAV file (any format)
+        audio = AudioSegment.from_wav(file_path)
 
-        # Validate format
-        if sample_width != 2 or channels != 1:
-            print(f"⚠️ Invalid WAV format: Expected 16-bit PCM (sample width=2, channels=1), got width={sample_width}, channels={channels}")
-            return "Invalid WAV format (must be 16-bit PCM, mono)."
+        # Convert to 16-bit PCM, mono, 16kHz
+        audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
 
-        if sample_rate != 16000:
-            print(f"⚠️ Sample rate mismatch: Expected 16000 Hz, got {sample_rate} Hz")
-            return "Invalid sample rate (must be 16kHz)."
+        # Save to a buffer (no need for temporary files)
+        buffer = io.BytesIO()
+        audio.export(buffer, format="wav")
+        audio_content = buffer.getvalue()
 
-        # Read and encode the WAV file
-        with open(file_path, "rb") as audio_file:
-            audio_content = audio_file.read()
-
+        # Encode in Base64
         encoded_audio = base64.b64encode(audio_content).decode("utf-8")
 
-        # Prepare the API request payload
+        # Prepare API request
         body = {
             "config": {
-                "encoding": "LINEAR16",  # Ensure it's LINEAR16 for WAV files
-                "sampleRateHertz": sample_rate,
+                "encoding": "LINEAR16",
+                "sampleRateHertz": 16000,
                 "languageCode": language
             },
             "audio": {
@@ -105,14 +92,10 @@ def transcribe_audio_google(file_path, language):
             print(f"❌ Google Speech API error: {response.status_code} {response.text}")
             return None
 
-    except wave.Error as wav_err:
-        print(f"❌ WAV file error: {wav_err}")
-        return "Invalid WAV file."
-
     except Exception as e:
         print(f"❌ Google Transcription error: {e}")
         return None
-
+        
 @app.route("/")
 def index():
     """Render the homepage."""
