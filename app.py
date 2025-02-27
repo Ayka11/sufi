@@ -48,34 +48,37 @@ def transcribe_audio_azure(file_path, language):
         print(f"❌ Azure Transcription error: {e}")
         return None  # Return None if API call fails
 
-def transcribe_audio_google(file_path,language):
+def transcribe_audio_google(file_path, language):
     """Transcribe audio using Google Speech-to-Text."""
     try:
         with open(file_path, 'rb') as audio_file:
             audio_content = audio_file.read()
 
-        headers = {
-            "Content-Type": "application/json"
-        }
+        # Encode audio content in Base64
+        encoded_audio = base64.b64encode(audio_content).decode('utf-8')
 
+        # Prepare the API request payload
         body = {
             "config": {
-                "encoding": "LINEAR16",  # Assuming the audio is in the WAV format, which uses LINEAR16 encoding
-                "sampleRateHertz": 16000,
-                "languageCode": language  # You can change this to select the language
+                "encoding": "LINEAR16",  # Audio encoding for WAV format (adjust if needed)
+                "sampleRateHertz": 16000,  # Assuming a sample rate of 16kHz for the audio
+                "languageCode": language  # Language code, e.g., 'en-US'
             },
             "audio": {
-                "content": audio_content.decode('base64')  # Base64 encode the audio content
+                "content": encoded_audio  # Base64 encoded audio content
             }
         }
 
-        response = requests.post(GOOGLE_SPEECH_URL, headers=headers, json=body)
+        # Send request to Google Speech API
+        response = requests.post(GOOGLE_SPEECH_URL, json=body)
 
+        # Handle the response
         if response.status_code == 200:
             result = response.json()
             if "results" in result and len(result["results"]) > 0:
                 return result["results"][0]["alternatives"][0]["transcript"]
             else:
+                print("No speech detected.")
                 return "No speech detected."
         else:
             print(f"❌ Google Speech API error: {response.status_code} {response.text}")
@@ -83,6 +86,7 @@ def transcribe_audio_google(file_path,language):
     except Exception as e:
         print(f"❌ Google Transcription error: {e}")
         return None
+
 
 @app.route("/")
 def index():
