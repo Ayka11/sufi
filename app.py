@@ -48,14 +48,6 @@ def transcribe_audio_azure(file_path, language):
         print(f"❌ Azure Transcription error: {e}")
         return None  # Return None if API call fails
 
-import requests
-import base64
-import io
-import os
-from pydub import AudioSegment
-
-GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1/speech:recognize?key=YOUR_API_KEY"
-
 def transcribe_audio_google(file_path, language):
     """Transcribe WAV or WEBM file using Google Speech-to-Text."""
     try:
