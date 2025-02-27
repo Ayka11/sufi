@@ -5,6 +5,7 @@ import azure.cognitiveservices.speech as speechsdk
 from pydub import AudioSegment
 import requests
 import json
+import io
 
 app = Flask(__name__)
 
