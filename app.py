@@ -48,16 +48,33 @@ def transcribe_audio_azure(file_path, language):
         print(f"❌ Azure Transcription error: {e}")
         return None  # Return None if API call fails
 
-def transcribe_audio_google(file_path, language):
-    """Transcribe any WAV file (auto-fixes format) using Google Speech-to-Text."""
-    try:
-        # Load the WAV file (any format)
-        audio = AudioSegment.from_wav(file_path)
+import requests
+import base64
+import io
+import os
+from pydub import AudioSegment
 
-        # Convert to 16-bit PCM, mono, 16kHz
+GOOGLE_SPEECH_URL = "https://speech.googleapis.com/v1/speech:recognize?key=YOUR_API_KEY"
+
+def transcribe_audio_google(file_path, language):
+    """Transcribe WAV or WEBM file using Google Speech-to-Text."""
+    try:
+        # Detect file format
+        file_ext = os.path.splitext(file_path)[1].lower()
+
+        # Convert WEBM to WAV if needed
+        if file_ext == ".webm":
+            audio = AudioSegment.from_file(file_path, format="webm")
+        elif file_ext == ".wav":
+            audio = AudioSegment.from_wav(file_path)
+        else:
+            print(f"❌ Unsupported file format: {file_ext}")
+            return "Invalid file format."
+
+        # Convert to 16-bit PCM, mono, 16kHz WAV
         audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
 
-        # Save to a buffer (no need for temporary files)
+        # Save to a buffer (no temporary files)
         buffer = io.BytesIO()
         audio.export(buffer, format="wav")
         audio_content = buffer.getvalue()
@@ -109,7 +126,7 @@ def transcribe():
 
     audio_file = request.files["audio"]
     language = request.form.get("language")  # Get language, default to English
-    recognizer_model = request.form.get("recognizerModel", "azure")  # Get selected recognizer model
+    recognizer_model = request.form.get("recognizerModel")  # Get selected recognizer model
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_audio:
         audio_file.save(temp_audio.name)
@@ -121,7 +138,7 @@ def transcribe():
 
     # Choose transcription model based on user selection
     if recognizer_model == "google":
-        transcription = transcribe_audio_google(wav_path,language)
+        transcription = transcribe_audio_google(webm_path,language)
     else:
         transcription = transcribe_audio_azure(wav_path,language)
 
