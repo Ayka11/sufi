@@ -1,7 +1,8 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Node.js app to Azure Web App - Transkripsiya
+name: Build and deploy Python app to Azure Web App - Transkripsiya
 
 on:
   push:
@@ -18,25 +19,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: Set up Python version
+        uses: actions/setup-python@v5
         with:
-          node-version: '22.x'
+          python-version: '3.12'
 
-      - name: npm install, build, and test
+      - name: Create and start virtual environment
         run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+          python -m venv venv
+          source venv/bin/activate
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        
+      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: release.zip
+          name: python-app
+          path: |
+            release.zip
+            !venv/
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,23 +59,23 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: python-app
 
       - name: Unzip artifact for deployment
         run: unzip release.zip
+
       
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5692EB408D374B7C92F42FFD59DDE4B1 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_DAFE1501E08044B9AC640380CA697F2A }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FAF0DBE147A4473185ED0F54FD9F00DD }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_3E77B50F6E96407896D3F345AD80510C }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_5937BEEE7BFD48249F7FEB3BE731DD6E }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_14E95AB6ACEE4973B9545F5F338A777F }}
 
       - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
+        id: deploy-to-webapp
         with:
           app-name: 'Transkripsiya'
           slot-name: 'Production'
-          package: .
           
