@@ -11,12 +11,12 @@ import base64
 app = Flask(__name__)
 
 # Azure Speech Service Credentials
-SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990"
-SPEECH_REGION = "southeastasia"
+# SPEECH_KEY = "0457e552ce7a4ca290ca45c2d4910990" ###
+# SPEECH_REGION = "southeastasia" ###
 
 # Google Speech API setup
-GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
-GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}"
+# GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA" ###
+# GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}" ###
 
 def convert_webm_to_wav(webm_path):
     """Convert WebM audio file to WAV format."""
