@@ -3,7 +3,7 @@ import pyaudio
 from google.cloud import speech
 
 # Set the path to your Google Cloud service account key
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "sc-1-433715-558af7a8b81b.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "sc-1-433715-558af7a8b81b.json" ###
 
 # Configure the microphone audio input stream
 RATE = 16000  # Sample rate in Hz
