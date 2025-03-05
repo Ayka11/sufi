@@ -14,12 +14,12 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Azure Speech API setup
-AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990"
+# AZURE_SUBSCRIPTION_KEY = "0457e552ce7a4ca290ca45c2d4910990" ###
 AZURE_REGION = "southeastasia"
 
 # Google Speech API setup
-GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
-GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}"
+# GOOGLE_API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA" ###
+# GOOGLE_SPEECH_URL = f"https://speech.googleapis.com/v1p1beta1/speech:recognize?key={GOOGLE_API_KEY}" ###
 
 UPLOAD_FOLDER = 'downloads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
