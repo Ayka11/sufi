@@ -6,7 +6,7 @@ import json
 import wave
 
 # Your Google Cloud API Key
-API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA"
+# API_KEY = "AIzaSyCtqPXuY9-mRR3eTR-hC-3uf4KZKxknMEA" ###
 
 # Audio stream configuration
 RATE = 16000  # Sample rate in Hz
@@ -15,7 +15,7 @@ CHANNELS = 1  # Mono audio
 FORMAT = pyaudio.paInt16  # Audio format for PyAudio
 
 # URL for Google Cloud Speech API
-SPEECH_API_URL = "https://speech.googleapis.com/v1p1beta1/speech:recognize?key=" + API_KEY
+# SPEECH_API_URL = "https://speech.googleapis.com/v1p1beta1/speech:recognize?key=" + API_KEY ###
 
 def transcribe_audio_live():
     # Initialize PyAudio to capture audio
